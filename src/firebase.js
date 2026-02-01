@@ -2,11 +2,15 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore"; // NEW IMPORT
 
-// YOUR CONFIG (Keep your existing keys here!)
+// --- YOUR CONFIG (Keep your existing keys!) ---
 const firebaseConfig = {
-  // ... keep your existing keys ...
-  apiKey: "AIzaSy...", 
-  // ...
+  apiKey: "AIzaSyBSoIu98oRFHvcCasLmdMYkO3b18ZM-lOE",
+  authDomain: "jamiez-38bfc.firebaseapp.com",
+  projectId: "jamiez-38bfc",
+  storageBucket: "jamiez-38bfc.firebasestorage.app",
+  messagingSenderId: "856024076099",
+  appId: "1:856024076099:web:3bb511ae8f40917037e9f6",
+  measurementId: "G-YLVSJE9EH2"
 };
 
 // Initialize Firebase
@@ -31,18 +35,27 @@ export const logout = () => {
   return signOut(auth);
 };
 
-// NEW: Save User's Script URL
+// NEW: Save User's Script URL to Database
 export const saveUserUrl = async (userId, url) => {
-  await setDoc(doc(db, "users", userId), { scriptUrl: url }, { merge: true });
+  try {
+    await setDoc(doc(db, "users", userId), { scriptUrl: url }, { merge: true });
+  } catch (e) {
+    console.error("Error saving URL: ", e);
+  }
 };
 
-// NEW: Get User's Script URL
+// NEW: Get User's Script URL from Database
 export const getUserUrl = async (userId) => {
-  const docRef = doc(db, "users", userId);
-  const docSnap = await getDoc(docRef);
-  if (docSnap.exists()) {
-    return docSnap.data().scriptUrl;
-  } else {
+  try {
+    const docRef = doc(db, "users", userId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().scriptUrl;
+    } else {
+      return null;
+    }
+  } catch (e) {
+    console.error("Error getting URL: ", e);
     return null;
   }
 };
