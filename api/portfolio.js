@@ -1,28 +1,34 @@
-export default async function handler(req, res) {
-  // PASTE YOUR NEW KEY HERE (Keep the quotes!)
-  const apiKey = "23713874ZXmqDynruBrDNmaKjIbrBgDHMeOtO"; 
+export const config = { runtime: 'edge' };
 
+export default async function handler(req) {
+  // 1. GET URL PARAMETERS (Different in Edge Mode)
+  const { searchParams } = new URL(req.url);
+  const rawKey = searchParams.get('apiKey') || "";
+  
+  // OR USE HARDCODED KEY IF YOU PREFER TESTING:
+  const apiKey = rawKey.trim() || "23713874ZXmqDynruBrDNmaKjIbrBgDHMeOtO"; 
+
+  if (!apiKey || apiKey.length < 10) {
+    return new Response(JSON.stringify({ error: "API Key is missing or invalid" }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Helper to fetch from T212
   const fetchT212 = async (subdomain) => {
     try {
       const url = `https://${subdomain}.trading212.com/api/v0/equity/account/cash`;
       
-      // CHAMELEON MODE: Look exactly like a Chrome Browser
       const headers = { 
         'Authorization': apiKey,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       };
 
-      // We use the 'live' URL directly first
       const response = await fetch(url, { headers });
       
       if (!response.ok) {
-        // Return the RAW text from T212 to see why they blocked us
-        const errText = await response.text();
-        console.log(`T212 Blocked Cash: ${response.status} - ${errText}`);
-        return { success: false, status: response.status, error: errText };
+        return { success: false, status: response.status, error: await response.text() };
       }
 
       const cash = await response.json();
@@ -31,8 +37,7 @@ export default async function handler(req, res) {
       
       if (!portRes.ok) return { success: false, status: portRes.status };
 
-      const portfolio = await portRes.json();
-      return { success: true, cash, portfolio };
+      return { success: true, cash, portfolio: await portRes.json() };
 
     } catch (e) {
       return { success: false, error: e.message };
@@ -51,14 +56,17 @@ export default async function handler(req, res) {
 
     // 3. IF FAILED
     if (!result.success) {
-      return res.status(401).json({ 
+      return new Response(JSON.stringify({ 
         error: "Connection Failed", 
         debug_info: {
-          reason: "T212 Firewall Blocked Vercel",
+          reason: "T212 Rejected Connection",
           status: result.status,
-          details: result.error, // This will tell us if it's a Cloudflare block
-          region: process.env.VERCEL_REGION || "Unknown (Likely US)"
+          region: "Edge Network (Should be EU)", // We changed this!
+          details: result.error
         }
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -96,9 +104,15 @@ export default async function handler(req, res) {
       charts: { invested: [], dividends: [], history: [] }
     };
 
-    return res.status(200).json(dashboardData);
+    return new Response(JSON.stringify(dashboardData), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
