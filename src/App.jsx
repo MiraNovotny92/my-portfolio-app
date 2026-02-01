@@ -852,7 +852,7 @@ const fetchData = async (keyToUse) => {
             <h1 style={{fontSize: '20px', fontWeight: '900', margin: 0}}>
               Jamiez <span style={{color: '#10b981'}}>Portfolio</span>
             </h1>
-            {usingCache && !loading && <span style={{fontSize:'10px', color: theme.sub}}>Offline Mode</span>}
+            {usingCache && !loading && <span style={{fontSize:'10px', color: theme.sub}}>MN</span>}
           </div>
           <div style={{display: 'flex', gap: '8px'}}>
             {/* Settings Button to Change URL */}
