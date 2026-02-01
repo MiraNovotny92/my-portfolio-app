@@ -8,7 +8,7 @@ import {
   LayoutDashboard, List, BarChart3, Landmark, Sun, 
   RefreshCw, Search, WifiOff, Globe, Briefcase, Banknote, TrendingUp,
   PieChart as PieIcon, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, 
-  LogOut, Settings // Added Settings icon
+  LogOut, Settings, ShieldCheck, Key
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, 
@@ -513,22 +513,22 @@ const SummaryCard = ({ summary, theme }) => {
         borderTop: '1px solid '+theme.border, 
         borderBottom: '1px solid '+theme.border
       }}>
-         <div>
-           <p style={{fontSize: '9px', color: theme.sub, fontWeight: 'bold'}}>INVESTED</p>
-           <p style={{margin: 0, fontWeight: '800', fontSize: '13px'}}>{invested.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-         </div>
-         <div>
-           <p style={{fontSize: '9px', color: theme.sub, fontWeight: 'bold'}}>PROFIT (CZK)</p>
-           <p style={{margin: 0, fontWeight: '800', fontSize: '13px', color: isProfit ? '#10b981' : '#ef4444'}}>
-             {isProfit ? '+' : ''}{profit.toLocaleString(undefined, {maximumFractionDigits: 0})}
-           </p>
-         </div>
-         <div>
-           <p style={{fontSize: '9px', color: theme.sub, fontWeight: 'bold'}}>RETURN (%)</p>
-           <p style={{margin: 0, fontWeight: '800', fontSize: '13px', color: isProfit ? '#10b981' : '#ef4444'}}>
-             {isProfit ? '+' : ''}{returnPct.toFixed(2)}%
-           </p>
-         </div>
+          <div>
+            <p style={{fontSize: '9px', color: theme.sub, fontWeight: 'bold'}}>INVESTED</p>
+            <p style={{margin: 0, fontWeight: '800', fontSize: '13px'}}>{invested.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+          </div>
+          <div>
+            <p style={{fontSize: '9px', color: theme.sub, fontWeight: 'bold'}}>PROFIT (CZK)</p>
+            <p style={{margin: 0, fontWeight: '800', fontSize: '13px', color: isProfit ? '#10b981' : '#ef4444'}}>
+              {isProfit ? '+' : ''}{profit.toLocaleString(undefined, {maximumFractionDigits: 0})}
+            </p>
+          </div>
+          <div>
+            <p style={{fontSize: '9px', color: theme.sub, fontWeight: 'bold'}}>RETURN (%)</p>
+            <p style={{margin: 0, fontWeight: '800', fontSize: '13px', color: isProfit ? '#10b981' : '#ef4444'}}>
+              {isProfit ? '+' : ''}{returnPct.toFixed(2)}%
+            </p>
+          </div>
       </div>
       <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
         <div style={{background: theme.bg, padding: '12px', borderRadius: '18px', border: '1px solid ' + theme.border}}>
@@ -587,41 +587,41 @@ const StockCard = ({ stock, theme }) => {
         </div>
       </div>
       <div style={{background: theme.bg, borderRadius: '16px', padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 8px'}}>
-         <div>
-           <p style={{margin:0, fontSize:'9px', color: theme.sub, fontWeight:'bold'}}>INVESTED</p>
-           <p style={{margin:0, fontSize:'13px', fontWeight:'800'}}>{stock.invested.toLocaleString()}</p>
-         </div>
-         <div style={{textAlign: 'right'}}>
-           <p style={{margin:0, fontSize:'9px', color: theme.sub, fontWeight:'bold'}}>VALUE</p>
-           <p style={{margin:0, fontSize:'13px', fontWeight:'800'}}>{stock.value.toLocaleString()}</p>
-         </div>
-         <div>
-           <p style={{margin:0, fontSize:'9px', color: theme.sub, fontWeight:'bold'}}>CAPITAL GAIN</p>
-           <div style={{display:'flex', gap:'4px', alignItems:'baseline'}}>
-             <p style={{margin:0, fontSize:'13px', fontWeight:'800', color: isProfit ? '#10b981' : '#ef4444'}}>
-               {isProfit ? '+' : ''}{stock.profit.toFixed(0)}
-             </p>
-             <span style={{fontSize:'10px', color: isProfit ? '#10b981' : '#ef4444'}}>
-               ({(stock.percent * 100).toFixed(1)}%)
-             </span>
-           </div>
-         </div>
-         <div style={{textAlign: 'right'}}>
-           <p style={{margin:0, fontSize:'9px', color: theme.sub, fontWeight:'bold'}}>TOTAL RETURN</p>
-           <div style={{display:'flex', gap:'4px', alignItems:'baseline', justifyContent: 'flex-end'}}>
-             <p style={{margin:0, fontSize:'13px', fontWeight:'800', color: isTotalProfit ? '#10b981' : '#ef4444'}}>
-               {isTotalProfit ? '+' : ''}{totalReturn.toFixed(0)}
-             </p>
-             <span style={{fontSize:'10px', color: isTotalProfit ? '#10b981' : '#ef4444'}}>
-               ({totalReturnPct.toFixed(1)}%)
-             </span>
-           </div>
-           {stock.dividendPaid > 0 && (
-             <p style={{margin:0, fontSize:'9px', color: '#3b82f6', marginTop:'2px'}}>
-               (Include {stock.dividendPaid.toFixed(0)} in dividends)
-             </p>
-           )}
-         </div>
+          <div>
+            <p style={{margin:0, fontSize:'9px', color: theme.sub, fontWeight:'bold'}}>INVESTED</p>
+            <p style={{margin:0, fontSize:'13px', fontWeight:'800'}}>{stock.invested.toLocaleString()}</p>
+          </div>
+          <div style={{textAlign: 'right'}}>
+            <p style={{margin:0, fontSize:'9px', color: theme.sub, fontWeight:'bold'}}>VALUE</p>
+            <p style={{margin:0, fontSize:'13px', fontWeight:'800'}}>{stock.value.toLocaleString()}</p>
+          </div>
+          <div>
+            <p style={{margin:0, fontSize:'9px', color: theme.sub, fontWeight:'bold'}}>CAPITAL GAIN</p>
+            <div style={{display:'flex', gap:'4px', alignItems:'baseline'}}>
+              <p style={{margin:0, fontSize:'13px', fontWeight:'800', color: isProfit ? '#10b981' : '#ef4444'}}>
+                {isProfit ? '+' : ''}{stock.profit.toFixed(0)}
+              </p>
+              <span style={{fontSize:'10px', color: isProfit ? '#10b981' : '#ef4444'}}>
+                ({(stock.percent * 100).toFixed(1)}%)
+              </span>
+            </div>
+          </div>
+          <div style={{textAlign: 'right'}}>
+            <p style={{margin:0, fontSize:'9px', color: theme.sub, fontWeight:'bold'}}>TOTAL RETURN</p>
+            <div style={{display:'flex', gap:'4px', alignItems:'baseline', justifyContent: 'flex-end'}}>
+              <p style={{margin:0, fontSize:'13px', fontWeight:'800', color: isTotalProfit ? '#10b981' : '#ef4444'}}>
+                {isTotalProfit ? '+' : ''}{totalReturn.toFixed(0)}
+              </p>
+              <span style={{fontSize:'10px', color: isTotalProfit ? '#10b981' : '#ef4444'}}>
+                ({totalReturnPct.toFixed(1)}%)
+              </span>
+            </div>
+            {stock.dividendPaid > 0 && (
+              <p style={{margin:0, fontSize:'9px', color: '#3b82f6', marginTop:'2px'}}>
+                (Include {stock.dividendPaid.toFixed(0)} in dividends)
+              </p>
+            )}
+          </div>
       </div>
     </div>
   );
@@ -630,11 +630,11 @@ const StockCard = ({ stock, theme }) => {
 // --- MAIN APPLICATION ---
 export default function App() {
   const [user, loadingAuth] = useAuthState(auth);
-  // NEW: State to store the user's personal Script URL
-  const [userScriptUrl, setUserScriptUrl] = useState(null); 
-  const [inputUrl, setInputUrl] = useState("");
+  // We keep userCredentials to store the combined Key|Secret string in Firebase
+  const [userCredentials, setUserCredentials] = useState(null); 
+  const [inputKey, setInputKey] = useState("");
+  const [inputSecret, setInputSecret] = useState("");
   const [isUrlSaved, setIsUrlSaved] = useState(false);
-
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
   const [isDark, setIsDark] = useState(true);
@@ -645,50 +645,55 @@ export default function App() {
   const [listSortBy, setListSortBy] = useState('value');
   const [listSortOrder, setListSortOrder] = useState('desc');
 
-  // 1. CHECK DATABASE FOR URL WHEN USER LOGS IN
+  // 1. CHECK DATABASE FOR CREDENTIALS WHEN USER LOGS IN
   useEffect(() => {
     if (user) {
-      checkUserUrl();
+      checkUserCredentials();
     }
   }, [user]);
 
-  const checkUserUrl = async () => {
-    const url = await getUserUrl(user.uid);
-    if (url) {
-      setUserScriptUrl(url);
+  const checkUserCredentials = async () => {
+    const stored = await getUserUrl(user.uid);
+    // If we have a stored value that contains our pipe separator, it's our Key|Secret
+    if (stored && stored.includes('|')) {
+      setUserCredentials(stored);
       setIsUrlSaved(true);
-      // Fetch immediately using the URL from database
-      fetchData(url); 
+      fetchData(stored); 
     } else {
       setIsUrlSaved(false);
     }
   };
 
-// 2. HANDLE SAVING API KEY
-  const handleSaveUrl = async () => {
-    // Basic validation: T212 keys are usually long strings
-    if (inputUrl.length < 20) {
-      alert("That doesn't look like a valid API Key.");
+  // 2. HANDLE SAVING API KEY & SECRET
+  const handleSaveCredentials = async () => {
+    if (inputKey.length < 10 || inputSecret.length < 5) {
+      alert("Please enter a valid API Key and Secret.");
       return;
     }
-    await saveUserUrl(user.uid, inputUrl); // We save the Key to Firebase
-    setUserScriptUrl(inputUrl);
+    // Combine them with a pipe to store in a single field in your Firebase DB
+    const combined = `${inputKey.trim()}|${inputSecret.trim()}`;
+    await saveUserUrl(user.uid, combined); 
+    setUserCredentials(combined);
     setIsUrlSaved(true);
-    fetchData(inputUrl);
+    fetchData(combined);
   };
 
-const fetchData = async (keyToUse) => {
-    const apiKey = keyToUse || userScriptUrl;
-    if (!apiKey) return;
+  const fetchData = async (credsToUse) => {
+    const creds = credsToUse || userCredentials;
+    if (!creds) return;
+
+    // Split back into Key and Secret
+    const [apiKey, apiSecret] = creds.split('|');
 
     setLoading(true);
     try {
-      // WE CALL OUR OWN INTERNAL VERCEL SERVER
-      // pass the apiKey as a query parameter
-    // We wrap apiKey in encodeURIComponent to handle special characters safely
-const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}`);
+      // Pass both to your Vercel /api/portfolio
+      const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}&apiSecret=${encodeURIComponent(apiSecret)}`);
       
-      if (!res.ok) throw new Error("Failed to fetch from T212");
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.debug_info?.details || "Failed to fetch from T212");
+      }
       
       const json = await res.json();
       
@@ -700,10 +705,13 @@ const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}`);
       }
     } catch (err) { 
       console.log("Fetch failed", err);
-      if (!localStorage.getItem(CACHE_KEY)) {
-        setErrorMsg("Could not connect. Check your API Key.");
-      } else {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        setData(JSON.parse(cached));
         setUsingCache(true);
+        setErrorMsg("Showing cached data. Live sync failed.");
+      } else {
+        setErrorMsg(err.message || "Connection Error.");
       }
     }
     setLoading(false);
@@ -777,13 +785,10 @@ const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}`);
     );
   };
 
-  // --- RENDER STATES ---
-
   if (loadingAuth) {
     return <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme.bg, color: theme.text}}>Loading...</div>;
   }
 
-  // 1. LOGIN SCREEN
   if (!user) {
     return (
       <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', gap: '20px'}}>
@@ -808,30 +813,43 @@ const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}`);
     );
   }
 
-// 2. SETUP SCREEN
+  // UPDATED SETUP SCREEN FOR KEY AND SECRET
   if (!isUrlSaved) {
     return (
       <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: theme.bg, color: theme.text, gap: '20px', padding: '20px', textAlign: 'center'}}>
+         <ShieldCheck size={48} color="#10b981" />
          <h1 style={{fontSize: '24px', fontWeight: 'bold'}}>Connect Trading 212</h1>
-         <p style={{maxWidth: '400px', color: theme.sub}}>
-            Generate an API Key in your Trading 212 Settings and paste it here.
-            <br/><span style={{fontSize:'12px', opacity:0.7}}>(Settings {'>'} API {'>'} Generate Key)</span>
+         <p style={{maxWidth: '400px', color: theme.sub, fontSize: '14px'}}>
+            Paste your API Key and API Secret from Trading 212.
          </p>
-         <input 
-           value={inputUrl}
-           onChange={(e) => setInputUrl(e.target.value)}
-           placeholder="Paste your T212 API Key..."
-           type="password" // Hide the key for security
-           style={{width: '100%', maxWidth: '400px', padding: '16px', borderRadius: '12px', border: '1px solid ' + theme.border, background: theme.card, color: theme.text, fontSize: '14px'}}
-         />
-         <button onClick={handleSaveUrl} style={{padding: '12px 32px', fontSize: '16px', borderRadius: '12px', border: 'none', background: '#3b82f6', color: '#fff', fontWeight: 'bold', cursor: 'pointer'}}>
-           Sync Portfolio
-         </button>
+         <div style={{width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '12px'}}>
+           <div style={{position: 'relative'}}>
+             <Key size={16} style={{position: 'absolute', left: '12px', top: '16px', color: theme.sub}} />
+             <input 
+               value={inputKey}
+               onChange={(e) => setInputKey(e.target.value)}
+               placeholder="API Key"
+               style={{width: '100%', padding: '16px 16px 16px 40px', borderRadius: '12px', border: '1px solid ' + theme.border, background: theme.card, color: theme.text}}
+             />
+           </div>
+           <div style={{position: 'relative'}}>
+             <ShieldCheck size={16} style={{position: 'absolute', left: '12px', top: '16px', color: theme.sub}} />
+             <input 
+               value={inputSecret}
+               onChange={(e) => setInputSecret(e.target.value)}
+               placeholder="API Secret"
+               type="password"
+               style={{width: '100%', padding: '16px 16px 16px 40px', borderRadius: '12px', border: '1px solid ' + theme.border, background: theme.card, color: theme.text}}
+             />
+           </div>
+           <button onClick={handleSaveCredentials} style={{padding: '16px', borderRadius: '12px', border: 'none', background: '#3b82f6', color: '#fff', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px'}}>
+             Sync Portfolio
+           </button>
+         </div>
       </div>
     );
   }
 
-  // 3. MAIN DASHBOARD (Only if user exists AND url is saved)
   return (
     <div style={{background: theme.bg, minHeight: '100vh', color: theme.text, display: 'flex', justifyContent: 'center'}}>
       <div style={{width: '100%', maxWidth: '1200px', position: 'relative'}}>
@@ -856,7 +874,6 @@ const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}`);
             {usingCache && !loading && <span style={{fontSize:'10px', color: theme.sub}}>MN</span>}
           </div>
           <div style={{display: 'flex', gap: '8px'}}>
-            {/* Settings Button to Change URL */}
             <button 
               onClick={() => setIsUrlSaved(false)} 
               style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.sub}}
