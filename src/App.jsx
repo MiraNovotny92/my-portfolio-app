@@ -311,7 +311,7 @@ const DividendsTab = ({ chartData, theme }) => {
       }}>
         <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px'}}>
           <TrendingUp size={20} color="#fff" style={{opacity: 0.8}}/>
-          <p style={{fontSize: '11px', opacity: 0.9, fontWeight: 'bold', letterSpacing: '1px'}}>DIVIDEND SNOWBALL</p>
+          <p style={{fontSize: '11px', opacity: 0.9, fontWeight: 'bold', letterSpacing: '1px'}}>DIVIDEND</p>
         </div>
         <h2 style={{fontSize: '42px', fontWeight: '900', margin: '0'}}>
           {(chartData?.dividends?.length > 0 ? chartData.dividends[chartData.dividends.length-1].total : 0).toLocaleString()} 
