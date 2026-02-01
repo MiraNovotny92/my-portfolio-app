@@ -664,55 +664,43 @@ export default function App() {
     }
   };
 
-  // 2. HANDLE SAVING NEW URL
+// 2. HANDLE SAVING API KEY
   const handleSaveUrl = async () => {
-    if (!inputUrl.includes("script.google.com")) {
-      alert("That doesn't look like a valid Google Script URL.");
+    // Basic validation: T212 keys are usually long strings
+    if (inputUrl.length < 20) {
+      alert("That doesn't look like a valid API Key.");
       return;
     }
-    await saveUserUrl(user.uid, inputUrl);
+    await saveUserUrl(user.uid, inputUrl); // We save the Key to Firebase
     setUserScriptUrl(inputUrl);
     setIsUrlSaved(true);
     fetchData(inputUrl);
   };
 
-  const fetchData = async (urlToUse) => {
-    // Use the passed URL (if first load) or the state URL
-    const scriptUrl = urlToUse || userScriptUrl;
-    if (!scriptUrl) return;
+const fetchData = async (keyToUse) => {
+    const apiKey = keyToUse || userScriptUrl;
+    if (!apiKey) return;
 
     setLoading(true);
-    const cb = Date.now();
     try {
-      const urls = [
-        `https://corsproxy.io/?${encodeURIComponent(scriptUrl)}&t=${cb}`,
-        `https://api.allorigins.win/get?url=${encodeURIComponent(scriptUrl)}&t=${cb}`,
-        `${scriptUrl}?t=${cb}`
-      ];
-
-      let json = null;
-      for (let url of urls) {
-        try {
-          const res = await fetch(url);
-          if (!res.ok) continue;
-          const raw = await res.json();
-          json = raw.contents ? JSON.parse(raw.contents) : raw;
-          if (json) break;
-        } catch(e) { continue; }
-      }
-
+      // WE CALL OUR OWN INTERNAL VERCEL SERVER
+      // pass the apiKey as a query parameter
+      const res = await fetch(`/api/portfolio?apiKey=${apiKey}`);
+      
+      if (!res.ok) throw new Error("Failed to fetch from T212");
+      
+      const json = await res.json();
+      
       if (json) {
         setData(json);
         localStorage.setItem(CACHE_KEY, JSON.stringify(json));
         setErrorMsg(null);
         setUsingCache(false);
-      } else {
-        throw new Error("Data empty");
       }
     } catch (err) { 
       console.log("Fetch failed", err);
       if (!localStorage.getItem(CACHE_KEY)) {
-        setErrorMsg("Could not connect to portfolio. Check script URL or connection.");
+        setErrorMsg("Could not connect. Check your API Key.");
       } else {
         setUsingCache(true);
       }
@@ -819,20 +807,24 @@ export default function App() {
     );
   }
 
-  // 2. SETUP SCREEN (If user has no URL yet)
+// 2. SETUP SCREEN
   if (!isUrlSaved) {
     return (
       <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: theme.bg, color: theme.text, gap: '20px', padding: '20px', textAlign: 'center'}}>
-         <h1 style={{fontSize: '24px', fontWeight: 'bold'}}>One Last Step!</h1>
-         <p style={{maxWidth: '400px', color: theme.sub}}>Paste your Google Script Web App URL below to connect your portfolio data.</p>
+         <h1 style={{fontSize: '24px', fontWeight: 'bold'}}>Connect Trading 212</h1>
+         <p style={{maxWidth: '400px', color: theme.sub}}>
+            Generate an API Key in your Trading 212 Settings and paste it here.
+            <br/><span style={{fontSize:'12px', opacity:0.7}}>(Settings {'>'} API {'>'} Generate Key)</span>
+         </p>
          <input 
            value={inputUrl}
            onChange={(e) => setInputUrl(e.target.value)}
-           placeholder="https://script.google.com/..."
+           placeholder="Paste your T212 API Key..."
+           type="password" // Hide the key for security
            style={{width: '100%', maxWidth: '400px', padding: '16px', borderRadius: '12px', border: '1px solid ' + theme.border, background: theme.card, color: theme.text, fontSize: '14px'}}
          />
-         <button onClick={handleSaveUrl} style={{padding: '12px 32px', fontSize: '16px', borderRadius: '12px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 'bold', cursor: 'pointer'}}>
-           Connect Portfolio
+         <button onClick={handleSaveUrl} style={{padding: '12px 32px', fontSize: '16px', borderRadius: '12px', border: 'none', background: '#3b82f6', color: '#fff', fontWeight: 'bold', cursor: 'pointer'}}>
+           Sync Portfolio
          </button>
       </div>
     );
