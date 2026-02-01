@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+// NEW: Import Firebase Auth hooks and tools
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, loginWithGoogle, logout } from './firebase';
+
 import { 
   LayoutDashboard, List, BarChart3, Landmark, Sun, 
   RefreshCw, Search, WifiOff, Globe, Briefcase, Banknote, TrendingUp,
-  PieChart as PieIcon, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown
+  PieChart as PieIcon, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, 
+  LogOut // NEW: Added Logout Icon
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, 
@@ -311,7 +316,7 @@ const DividendsTab = ({ chartData, theme }) => {
       }}>
         <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px'}}>
           <TrendingUp size={20} color="#fff" style={{opacity: 0.8}}/>
-          <p style={{fontSize: '11px', opacity: 0.9, fontWeight: 'bold', letterSpacing: '1px'}}>DIVIDEND</p>
+          <p style={{fontSize: '11px', opacity: 0.9, fontWeight: 'bold', letterSpacing: '1px'}}>DIVIDEND SNOWBALL</p>
         </div>
         <h2 style={{fontSize: '42px', fontWeight: '900', margin: '0'}}>
           {(chartData?.dividends?.length > 0 ? chartData.dividends[chartData.dividends.length-1].total : 0).toLocaleString()} 
@@ -623,6 +628,9 @@ const StockCard = ({ stock, theme }) => {
 
 // --- MAIN APPLICATION ---
 export default function App() {
+  // NEW: Auth State Hook
+  const [user, loadingAuth] = useAuthState(auth);
+
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
   const [isDark, setIsDark] = useState(true);
@@ -634,7 +642,10 @@ export default function App() {
   const [listSortBy, setListSortBy] = useState('value');
   const [listSortOrder, setListSortOrder] = useState('desc');
 
+  // Load data ONLY if user is logged in
   useEffect(() => {
+    if (!user) return; // Don't fetch if no user
+
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) { 
       try { 
@@ -643,7 +654,7 @@ export default function App() {
       } catch (e) {} 
     }
     fetchData();
-  }, []);
+  }, [user]); // Re-run when user logs in
 
   const fetchData = async () => {
     setLoading(true);
@@ -753,6 +764,36 @@ export default function App() {
     );
   };
 
+  // --- NEW: RENDER LOADING SCREEN OR LOGIN SCREEN ---
+  if (loadingAuth) {
+    return <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme.bg, color: theme.text}}>Loading...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', gap: '20px'}}>
+         <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>Jamiez Portfolio</h1>
+         <p style={{color: '#888'}}>Sign in to view the dashboard</p>
+         <button onClick={loginWithGoogle} style={{
+           padding: '12px 24px',
+           fontSize: '16px',
+           borderRadius: '12px',
+           border: 'none',
+           background: '#fff',
+           color: '#000',
+           fontWeight: 'bold',
+           cursor: 'pointer',
+           display: 'flex',
+           alignItems: 'center',
+           gap: '8px'
+         }}>
+           Sign in with Google
+         </button>
+      </div>
+    );
+  }
+
+  // --- RENDER MAIN DASHBOARD (Only if user exists) ---
   return (
     <div style={{background: theme.bg, minHeight: '100vh', color: theme.text, display: 'flex', justifyContent: 'center'}}>
       <div style={{width: '100%', maxWidth: '1200px', position: 'relative'}}>
@@ -789,6 +830,13 @@ export default function App() {
             >
               {loading ? <RefreshCw className="animate-spin" size={18}/> : <RefreshCw size={18}/>}
             </button>
+            {/* NEW: Logout Button */}
+            <button 
+              onClick={logout} 
+              style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: '#ef4444'}}
+            >
+              <LogOut size={18}/>
+            </button>
           </div>
         </header>
 
@@ -803,6 +851,13 @@ export default function App() {
             {activeTab === 'summary' && (
               <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                 <SummaryCard summary={data.accountSummary} theme={theme} />
+                {data.allocations && (
+                  <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px'}}>
+                    <AllocationList title="Market" icon={Globe} data={data.allocations.market} theme={theme} color="#3b82f6" />
+                    <AllocationList title="Sector" icon={Briefcase} data={data.allocations.sector} theme={theme} color="#f59e0b" />
+                    <AllocationList title="Currency" icon={Banknote} data={data.allocations.currency} theme={theme} color="#10b981" />
+                  </div>
+                )}
                 <Rankings stocks={stocksOnly} theme={theme} />
               </div>
             )}
