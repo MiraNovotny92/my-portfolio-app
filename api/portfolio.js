@@ -1,31 +1,32 @@
 import admin from 'firebase-admin';
 
-// This function cleans the key regardless of how it was pasted
+// Helper to clean the private key
 const cleanKey = (key) => {
   if (!key) return undefined;
   return key.replace(/\\n/g, '\n').replace(/"/g, '').trim();
 };
 
-// Initialize Firebase with a safety net
-try {
-  if (!admin.apps.length) {
-    const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: cleanKey(process.env.FIREBASE_PRIVATE_KEY),
-    };
-
-    if (serviceAccount.projectId && serviceAccount.privateKey) {
+// Initialize Firebase with a global check to prevent "already exists" errors
+if (!admin.apps.length) {
+  try {
+    const pKey = cleanKey(process.env.FIREBASE_PRIVATE_KEY);
+    
+    if (process.env.FIREBASE_PROJECT_ID && pKey) {
       admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: pKey,
+        }),
       });
+      console.log("Firebase Admin Initialized Successfully");
     }
+  } catch (e) {
+    console.error("Firebase Auth Initialization Error:", e.message);
   }
-} catch (e) {
-  console.error("Firebase Init Failed but continuing:", e.message);
 }
 
-const db = admin.firestore();
+const db = admin.apps.length ? admin.firestore() : null;
 
 export default async function handler(req, res) {
   const { apiKey, apiSecret, userId } = req.query;
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
   const authHeader = `Basic ${Buffer.from(`${apiKey.trim()}:${apiSecret.trim()}`).toString('base64')}`;
 
   try {
-    // 1. Fetch from T212 (The part we know works)
+    // 1. Fetch from Trading 212
     const [summaryRes, positionsRes] = await Promise.all([
       fetch(`https://live.trading212.com/api/v0/equity/account/summary`, {
         headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
@@ -48,20 +49,23 @@ export default async function handler(req, res) {
     ]);
 
     if (!summaryRes.ok || !positionsRes.ok) {
-      return res.status(401).json({ error: "T212 Auth Failed" });
+      return res.status(401).json({ error: "Trading 212 Authentication Failed" });
     }
 
     const summary = await summaryRes.json();
     const portfolio = await positionsRes.json();
+
     const totalValue = summary.cash.total + summary.investments.currentValue;
     const totalInvested = summary.investments.totalCost;
     const today = new Date().toISOString().split('T')[0];
 
-    // 2. Database Snapshot (Wrapped in its own try-catch so it doesn't crash the whole app)
+    // 2. Database Snapshot (History)
     let historyData = [];
-    try {
-      if (admin.apps.length) {
+    if (db) {
+      try {
         const historyRef = db.collection('users').doc(userId).collection('history');
+        
+        // Save today's snapshot
         await historyRef.doc(today).set({
           date: today,
           balance: totalValue,
@@ -69,13 +73,18 @@ export default async function handler(req, res) {
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        const snapshot = await historyRef.orderBy('date', 'asc').limit(100).get();
-        historyData = snapshot.docs.map(doc => doc.data());
+        // Fetch history (limit to last 30 days for performance)
+        const snapshot = await historyRef.orderBy('date', 'asc').limit(30).get();
+        historyData = snapshot.docs.map(doc => ({
+          dateLabel: doc.data().date,
+          balanceVal: doc.data().balance,
+          investedVal: doc.data().invested
+        }));
+      } catch (dbErr) {
+        console.error("Firestore Error:", dbErr.message);
+        // Provide at least one point so the chart doesn't crash
+        historyData = [{ dateLabel: today, balanceVal: totalValue, investedVal: totalInvested }];
       }
-    } catch (dbErr) {
-      console.warn("DB Save skipped:", dbErr.message);
-      // Fallback to one data point so the chart doesn't break
-      historyData = [{ date: today, balance: totalValue, invested: totalInvested }];
     }
 
     // 3. Map Positions
@@ -92,7 +101,7 @@ export default async function handler(req, res) {
       dividendPaid: 0
     }));
 
-    // 4. Return Data
+    // 4. Return Final JSON
     return res.status(200).json({
       accountSummary: {
         totalValue,
