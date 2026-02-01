@@ -1,30 +1,34 @@
-// api/portfolio.js
 export default async function handler(req, res) {
-  const apiKey = "23713874ZXmqDynruBrDNmaKjIbrBgDHMeOtO";
-
-  if (!apiKey) return res.status(400).json({ error: "No API Key received" });
+  // PASTE YOUR NEW KEY HERE (Keep the quotes!)
+  const apiKey = "23713874ZXmqDynruBrDNmaKjIbrBgDHMeOtO"; 
 
   const fetchT212 = async (subdomain) => {
     try {
       const url = `https://${subdomain}.trading212.com/api/v0/equity/account/cash`;
       
-      // NEW: We add 'User-Agent' so T212 doesn't block us as a bot
+      // CHAMELEON MODE: Look exactly like a Chrome Browser
       const headers = { 
         'Authorization': apiKey,
-        'User-Agent': 'Jamiez-Portfolio/1.0',
-        'Content-Type': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
       };
 
+      // We use the 'live' URL directly first
       const response = await fetch(url, { headers });
       
       if (!response.ok) {
-        return { success: false, status: response.status };
+        // Return the RAW text from T212 to see why they blocked us
+        const errText = await response.text();
+        console.log(`T212 Blocked Cash: ${response.status} - ${errText}`);
+        return { success: false, status: response.status, error: errText };
       }
 
       const cash = await response.json();
       
       const portRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/portfolio`, { headers });
-
+      
       if (!portRes.ok) return { success: false, status: portRes.status };
 
       const portfolio = await portRes.json();
@@ -36,31 +40,30 @@ export default async function handler(req, res) {
   };
 
   try {
-    // 1. Try Live
+    // 1. Try Live Server
     let result = await fetchT212('live');
 
-    // 2. Try Demo if live failed
+    // 2. Try Demo if Live failed
     if (!result.success) {
       const demoResult = await fetchT212('demo');
       if (demoResult.success) result = demoResult;
     }
 
-    // 3. IF STILL FAILING
+    // 3. IF FAILED
     if (!result.success) {
       return res.status(401).json({ 
         error: "Connection Failed", 
         debug_info: {
-          reason: "T212 Blocked Request",
+          reason: "T212 Firewall Blocked Vercel",
           status: result.status,
-          hint: "Try regenerating the key one last time."
+          details: result.error, // This will tell us if it's a Cloudflare block
+          region: process.env.VERCEL_REGION || "Unknown (Likely US)"
         }
       });
     }
 
     // --- SUCCESS: TRANSLATE DATA ---
     const { cash, portfolio } = result;
-    
-    // Safety check: Ensure portfolio is an array
     const cleanPortfolio = Array.isArray(portfolio) ? portfolio : [];
 
     const positions = cleanPortfolio.map(pos => ({
