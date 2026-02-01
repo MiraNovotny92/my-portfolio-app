@@ -1,20 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 // NEW: Import Firebase Auth hooks and tools
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, loginWithGoogle, logout } from './firebase';
+// IMPORTANT: We added getUserUrl and saveUserUrl here
+import { auth, loginWithGoogle, logout, getUserUrl, saveUserUrl } from './firebase';
 
 import { 
   LayoutDashboard, List, BarChart3, Landmark, Sun, 
   RefreshCw, Search, WifiOff, Globe, Briefcase, Banknote, TrendingUp,
   PieChart as PieIcon, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, 
-  LogOut // NEW: Added Logout Icon
+  LogOut, Settings // Added Settings icon
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area
 } from 'recharts';
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzbdUMr75sWraixiabwhlolaIrr7NYkqMH5MXIFRVpWuGhdWpxlghpotxSKGlO4KFJBzA/exec";
+// We removed the hardcoded SCRIPT_URL constant because we load it from the DB now
 const CACHE_KEY = "portfolio_data_v4";
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#fbbf24', '#ec4899'];
@@ -628,8 +629,11 @@ const StockCard = ({ stock, theme }) => {
 
 // --- MAIN APPLICATION ---
 export default function App() {
-  // NEW: Auth State Hook
   const [user, loadingAuth] = useAuthState(auth);
+  // NEW: State to store the user's personal Script URL
+  const [userScriptUrl, setUserScriptUrl] = useState(null); 
+  const [inputUrl, setInputUrl] = useState("");
+  const [isUrlSaved, setIsUrlSaved] = useState(false);
 
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
@@ -638,32 +642,52 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [usingCache, setUsingCache] = useState(false); 
-
   const [listSortBy, setListSortBy] = useState('value');
   const [listSortOrder, setListSortOrder] = useState('desc');
 
-  // Load data ONLY if user is logged in
+  // 1. CHECK DATABASE FOR URL WHEN USER LOGS IN
   useEffect(() => {
-    if (!user) return; // Don't fetch if no user
-
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) { 
-      try { 
-        setData(JSON.parse(cached)); 
-        setUsingCache(true); 
-      } catch (e) {} 
+    if (user) {
+      checkUserUrl();
     }
-    fetchData();
-  }, [user]); // Re-run when user logs in
+  }, [user]);
 
-  const fetchData = async () => {
+  const checkUserUrl = async () => {
+    const url = await getUserUrl(user.uid);
+    if (url) {
+      setUserScriptUrl(url);
+      setIsUrlSaved(true);
+      // Fetch immediately using the URL from database
+      fetchData(url); 
+    } else {
+      setIsUrlSaved(false);
+    }
+  };
+
+  // 2. HANDLE SAVING NEW URL
+  const handleSaveUrl = async () => {
+    if (!inputUrl.includes("script.google.com")) {
+      alert("That doesn't look like a valid Google Script URL.");
+      return;
+    }
+    await saveUserUrl(user.uid, inputUrl);
+    setUserScriptUrl(inputUrl);
+    setIsUrlSaved(true);
+    fetchData(inputUrl);
+  };
+
+  const fetchData = async (urlToUse) => {
+    // Use the passed URL (if first load) or the state URL
+    const scriptUrl = urlToUse || userScriptUrl;
+    if (!scriptUrl) return;
+
     setLoading(true);
     const cb = Date.now();
     try {
       const urls = [
-        `https://corsproxy.io/?${encodeURIComponent(SCRIPT_URL)}&t=${cb}`,
-        `https://api.allorigins.win/get?url=${encodeURIComponent(SCRIPT_URL)}&t=${cb}`,
-        `${SCRIPT_URL}?t=${cb}`
+        `https://corsproxy.io/?${encodeURIComponent(scriptUrl)}&t=${cb}`,
+        `https://api.allorigins.win/get?url=${encodeURIComponent(scriptUrl)}&t=${cb}`,
+        `${scriptUrl}?t=${cb}`
       ];
 
       let json = null;
@@ -764,11 +788,13 @@ export default function App() {
     );
   };
 
-  // --- NEW: RENDER LOADING SCREEN OR LOGIN SCREEN ---
+  // --- RENDER STATES ---
+
   if (loadingAuth) {
     return <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme.bg, color: theme.text}}>Loading...</div>;
   }
 
+  // 1. LOGIN SCREEN
   if (!user) {
     return (
       <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', gap: '20px'}}>
@@ -793,7 +819,26 @@ export default function App() {
     );
   }
 
-  // --- RENDER MAIN DASHBOARD (Only if user exists) ---
+  // 2. SETUP SCREEN (If user has no URL yet)
+  if (!isUrlSaved) {
+    return (
+      <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: theme.bg, color: theme.text, gap: '20px', padding: '20px', textAlign: 'center'}}>
+         <h1 style={{fontSize: '24px', fontWeight: 'bold'}}>One Last Step!</h1>
+         <p style={{maxWidth: '400px', color: theme.sub}}>Paste your Google Script Web App URL below to connect your portfolio data.</p>
+         <input 
+           value={inputUrl}
+           onChange={(e) => setInputUrl(e.target.value)}
+           placeholder="https://script.google.com/..."
+           style={{width: '100%', maxWidth: '400px', padding: '16px', borderRadius: '12px', border: '1px solid ' + theme.border, background: theme.card, color: theme.text, fontSize: '14px'}}
+         />
+         <button onClick={handleSaveUrl} style={{padding: '12px 32px', fontSize: '16px', borderRadius: '12px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 'bold', cursor: 'pointer'}}>
+           Connect Portfolio
+         </button>
+      </div>
+    );
+  }
+
+  // 3. MAIN DASHBOARD (Only if user exists AND url is saved)
   return (
     <div style={{background: theme.bg, minHeight: '100vh', color: theme.text, display: 'flex', justifyContent: 'center'}}>
       <div style={{width: '100%', maxWidth: '1200px', position: 'relative'}}>
@@ -818,6 +863,13 @@ export default function App() {
             {usingCache && !loading && <span style={{fontSize:'10px', color: theme.sub}}>Offline Mode</span>}
           </div>
           <div style={{display: 'flex', gap: '8px'}}>
+            {/* Settings Button to Change URL */}
+            <button 
+              onClick={() => setIsUrlSaved(false)} 
+              style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.sub}}
+            >
+              <Settings size={18}/>
+            </button>
             <button 
               onClick={() => setIsDark(!isDark)} 
               style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.text}}
@@ -825,12 +877,11 @@ export default function App() {
               <Sun size={18}/>
             </button>
             <button 
-              onClick={fetchData} 
+              onClick={() => fetchData(null)} 
               style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.text}}
             >
               {loading ? <RefreshCw className="animate-spin" size={18}/> : <RefreshCw size={18}/>}
             </button>
-            {/* NEW: Logout Button */}
             <button 
               onClick={logout} 
               style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: '#ef4444'}}
