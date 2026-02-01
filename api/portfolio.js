@@ -15,40 +15,35 @@ export default async function handler(req) {
   const fetchT212 = async (subdomain, endpoint) => {
     const targetUrl = `https://${subdomain}.trading212.com/api/v0/equity/${endpoint}`;
     
-    // Switch to corsproxy.io - it often handles Cloudflare better than AllOrigins
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+    // We switch to AllOrigins but use the 'raw' hex approach which handles larger files better
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
 
     try {
       const response = await fetch(proxyUrl, {
-        method: 'GET',
         headers: {
           'Authorization': authHeader,
           'Accept': 'application/json',
-          // High-authority headers to look like a modern browser
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-          'Cache-Control': 'no-cache'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0.0'
         }
       });
 
       if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Status ${response.status}: ${errText.substring(0, 100)}`);
+        throw new Error(`Proxy rejected request with status ${response.status}`);
       }
       
       return await response.json();
     } catch (e) {
-      console.error(`Fetch Error (${endpoint}):`, e.message);
       throw e;
     }
   };
 
   try {
-    // Try live first
+    // Fetch live data
     const summary = await fetchT212('live', 'account/summary');
     const portfolio = await fetchT212('live', 'positions');
 
-    // Reuse your mapping logic exactly as it was
-    const positions = portfolio.map(pos => ({
+    // Keep your mapping exactly as it is
+    const positions = Array.isArray(portfolio) ? portfolio.map(pos => ({
       name: pos.instrument.name || pos.instrument.ticker,
       ticker: pos.instrument.ticker,
       quantity: pos.quantity,
@@ -59,7 +54,7 @@ export default async function handler(req) {
       profit: pos.walletImpact.unrealizedProfitLoss,
       percent: pos.walletImpact.totalCost > 0 ? (pos.walletImpact.unrealizedProfitLoss / pos.walletImpact.totalCost) : 0,
       dividendPaid: 0
-    }));
+    })) : [];
 
     const dashboardData = {
       accountSummary: {
@@ -83,13 +78,16 @@ export default async function handler(req) {
 
     return new Response(JSON.stringify(dashboardData), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, max-age=0' 
+      }
     });
 
   } catch (error) {
     return new Response(JSON.stringify({ 
-      error: "Connection Refused by T212", 
-      debug_info: { details: error.message, hint: "Check if the API Key has 'Unrestricted IP' selected in T212 settings." } 
+      error: "Data Fetch Error", 
+      debug_info: { details: error.message } 
     }), { status: 500 });
   }
 }
