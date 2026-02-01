@@ -487,7 +487,7 @@ const AnalyticsTab = ({ stocks, chartData, theme }) => {
 const SummaryCard = ({ summary, theme }) => {
   const totalValue = summary.totalValue || 0;
   const profit = summary.totalPL || 0;
-  const invested = totalValue - profit; 
+  const invested = summary.totalInvested || (totalValue - profit);
   const returnPct = invested > 0 ? (profit / invested) * 100 : 0;
   const isProfit = profit >= 0;
 
