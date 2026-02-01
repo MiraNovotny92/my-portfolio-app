@@ -688,7 +688,7 @@ export default function App() {
     setLoading(true);
     try {
       // Pass both to your Vercel /api/portfolio
-      const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}&apiSecret=${encodeURIComponent(apiSecret)}`);
+      const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}&apiSecret=${encodeURIComponent(apiSecret)}&userId=${user.uid}`);
       
       if (!res.ok) {
         const errJson = await res.json();
