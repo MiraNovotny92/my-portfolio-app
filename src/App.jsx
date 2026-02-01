@@ -685,7 +685,8 @@ const fetchData = async (keyToUse) => {
     try {
       // WE CALL OUR OWN INTERNAL VERCEL SERVER
       // pass the apiKey as a query parameter
-      const res = await fetch(`/api/portfolio?apiKey=${apiKey}`);
+    // We wrap apiKey in encodeURIComponent to handle special characters safely
+const res = await fetch(`/api/portfolio?apiKey=${encodeURIComponent(apiKey)}`);
       
       if (!res.ok) throw new Error("Failed to fetch from T212");
       

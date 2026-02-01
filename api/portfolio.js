@@ -1,68 +1,65 @@
+// api/portfolio.js
 export default async function handler(req, res) {
-  // 1. CLEAN THE KEY (Remove accidental spaces)
   const rawKey = req.query.apiKey || "";
   const apiKey = rawKey.trim();
 
-  if (!apiKey) return res.status(400).json({ error: "API Key is missing" });
+  // --- INSPECTOR: Return info about the key (Safely) ---
+  if (!apiKey) return res.status(400).json({ error: "No API Key received" });
 
-  // Helper to fetch from T212 with detailed error tracking
   const fetchT212 = async (subdomain) => {
     try {
       const url = `https://${subdomain}.trading212.com/api/v0/equity/account/cash`;
-      const res = await fetch(url, {
+      const response = await fetch(url, {
         headers: { 'Authorization': apiKey }
       });
-
-      if (!res.ok) {
-        // If it fails, return the SPECIFIC error from T212
-        const text = await res.text();
-        return { success: false, status: res.status, error: text };
+      
+      if (!response.ok) {
+        // Return failure info
+        return { success: false, status: response.status };
       }
 
-      const cash = await res.json();
+      const cash = await response.json();
       
-      // If cash worked, get portfolio
+      // If cash worked, fetch portfolio
       const portRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/portfolio`, {
         headers: { 'Authorization': apiKey }
       });
-      
-      if (!portRes.ok) return { success: false, status: portRes.status, error: "Portfolio fetch failed" };
-      
+
+      if (!portRes.ok) return { success: false, status: portRes.status };
+
       const portfolio = await portRes.json();
       return { success: true, cash, portfolio };
 
     } catch (e) {
-      return { success: false, status: 500, error: e.message };
+      return { success: false, error: e.message };
     }
   };
 
   try {
-    // 1. Try LIVE server
+    // 1. Try Live
     let result = await fetchT212('live');
 
-    // 2. If LIVE failed with 401 (Unauthorized), try DEMO
+    // 2. Try Demo
     if (!result.success) {
-      console.log(`Live failed (${result.status}), trying Demo...`);
       const demoResult = await fetchT212('demo');
-      
-      // If Demo works, use it. If not, stick with the Live error to show the user.
-      if (demoResult.success) {
-        result = demoResult;
-      }
+      if (demoResult.success) result = demoResult;
     }
 
-    // 3. IF STILL FAILING -> RETURN THE EXACT ERROR DETAILS
+    // 3. IF FAILED: Return Debug Info
     if (!result.success) {
-      return res.status(result.status || 500).json({ 
+      return res.status(401).json({ 
         error: "Connection Failed", 
-        details: result.error, // <--- THIS IS WHAT WE NEED TO SEE
-        server_status: result.status 
+        debug_info: {
+          key_length: apiKey.length, // How many characters?
+          key_start: apiKey.substring(0, 4) + "...", // Does it start with 2000?
+          last_status: result.status || "Unknown"
+        }
       });
     }
 
+    // --- SUCCESS: TRANSLATE DATA ---
     const { cash, portfolio } = result;
-
-    // --- TRANSLATION LAYER (Standard logic) ---
+    
     const positions = Array.isArray(portfolio) ? portfolio.map(pos => ({
       name: pos.ticker,
       quantity: pos.quantity,
