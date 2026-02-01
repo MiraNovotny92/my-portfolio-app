@@ -15,34 +15,39 @@ export default async function handler(req) {
   const fetchT212 = async (subdomain, endpoint) => {
     const targetUrl = `https://${subdomain}.trading212.com/api/v0/equity/${endpoint}`;
     
-    // We use a public proxy to bypass Cloudflare's Vercel-specific block
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    // Switch to corsproxy.io - it often handles Cloudflare better than AllOrigins
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
     try {
       const response = await fetch(proxyUrl, {
+        method: 'GET',
         headers: {
           'Authorization': authHeader,
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          // High-authority headers to look like a modern browser
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          'Cache-Control': 'no-cache'
         }
       });
 
-      if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Status ${response.status}: ${errText.substring(0, 100)}`);
+      }
       
-      const wrapper = await response.json();
-      // allorigins returns the actual API response inside a "contents" string
-      return JSON.parse(wrapper.contents);
+      return await response.json();
     } catch (e) {
-      console.error(`Error fetching ${endpoint}:`, e);
+      console.error(`Fetch Error (${endpoint}):`, e.message);
       throw e;
     }
   };
 
   try {
-    // Attempt to fetch via proxy
+    // Try live first
     const summary = await fetchT212('live', 'account/summary');
     const portfolio = await fetchT212('live', 'positions');
 
-    // MAPPING DATA TO DASHBOARD
+    // Reuse your mapping logic exactly as it was
     const positions = portfolio.map(pos => ({
       name: pos.instrument.name || pos.instrument.ticker,
       ticker: pos.instrument.ticker,
@@ -83,8 +88,8 @@ export default async function handler(req) {
 
   } catch (error) {
     return new Response(JSON.stringify({ 
-      error: "Cloudflare/Proxy Blocked", 
-      debug_info: { details: error.message } 
+      error: "Connection Refused by T212", 
+      debug_info: { details: error.message, hint: "Check if the API Key has 'Unrestricted IP' selected in T212 settings." } 
     }), { status: 500 });
   }
 }
