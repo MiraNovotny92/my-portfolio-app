@@ -48,31 +48,44 @@ export default async function handler(req, res) {
     const summary = await summaryRes.json();
     const portfolio = await positionsRes.json();
 
-    // --- MATH FIXES TO MATCH YOUR RAW DATA ---
-    const totalValue = summary.totalValue; // Use the direct field from T212
-    const totalInvested = summary.investments.totalCost;
-    const totalPL = summary.investments.unrealizedProfitLoss;
-    const freeCash = summary.cash.availableToTrade;
+    // --- CRITICAL MATH FIXES BASED ON YOUR RAW DATA ---
+    // Using summary.totalValue (88,741.06) directly
+    const totalValue = summary.totalValue || 0; 
+    const totalInvested = summary.investments.totalCost || 0;
+    const totalPL = summary.investments.unrealizedProfitLoss || 0;
+    const freeCash = summary.cash.availableToTrade || 0;
     const today = new Date().toISOString().split('T')[0];
 
+    // --- DATABASE OPS ---
     let historyData = [];
     try {
       const db = admin.firestore();
-      const historyRef = db.collection('users').doc(userId).collection('history');
+      const userRef = db.collection('users').doc(userId);
       
-      await historyRef.doc(today).set({
+      // Save snapshot for history chart
+      await userRef.collection('history').doc(today).set({
         date: today,
         balance: totalValue,
         invested: totalInvested,
         timestamp: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      const snapshot = await historyRef.orderBy('date', 'asc').limit(100).get();
-      historyData = snapshot.docs.map(doc => ({
+      // Pull historical points and existing dividends
+      const [histSnap, divSnap] = await Promise.all([
+        userRef.collection('history').orderBy('date', 'asc').limit(100).get(),
+        userRef.collection('dividends').get()
+      ]);
+
+      historyData = histSnap.docs.map(doc => ({
         dateLabel: doc.data().date,
         balanceVal: doc.data().balance,
         investedVal: doc.data().invested
       }));
+
+      // Calculate dividends from your manual/synced entries
+      var totalDivsReceived = 0;
+      divSnap.forEach(doc => { totalDivsReceived += (doc.data().amount || 0); });
+      
     } catch (dbErr) {
       historyData = [{ dateLabel: today, balanceVal: totalValue, investedVal: totalInvested }];
     }
@@ -84,20 +97,21 @@ export default async function handler(req, res) {
       quantity: pos.quantity,
       avgPrice: pos.averagePricePaid,
       currPrice: pos.currentPrice,
-      invested: pos.walletImpact.totalCost, // CZK Cost
-      value: pos.walletImpact.currentValue, // CZK Value
-      profit: pos.walletImpact.unrealizedProfitLoss, // CZK Profit
+      invested: pos.walletImpact.totalCost, 
+      value: pos.walletImpact.currentValue, 
+      profit: pos.walletImpact.unrealizedProfitLoss, 
       percent: pos.walletImpact.totalCost > 0 ? (pos.walletImpact.unrealizedProfitLoss / pos.walletImpact.totalCost) : 0,
-      dividendPaid: 0
+      dividendPaid: 0 // We will wire this up once dividends are in Firestore
     }));
 
+    // --- FINAL RESPONSE ---
     res.status(200).json({
       accountSummary: {
-        totalValue,
+        totalValue: totalValue,
         portfolioValue: summary.investments.currentValue,
-        freeCash,
-        totalPL,
-        totalDividends: 247, // Hardcoded your current total for now
+        freeCash: freeCash,
+        totalPL: totalPL,
+        totalDividends: totalDivsReceived || 247, // Fallback to your known value
         divsMonthly2025: 18,
         divsMonthly2026: 24
       },
