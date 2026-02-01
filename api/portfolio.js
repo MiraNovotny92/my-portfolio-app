@@ -6,7 +6,7 @@ export default async function handler(req) {
   const rawKey = searchParams.get('apiKey') || "";
   
   // OR USE HARDCODED KEY IF YOU PREFER TESTING:
-  const apiKey = rawKey.trim() || "23713874ZXmqDynruBrDNmaKjIbrBgDHMeOtO"; 
+  const apiKey = rawKey.trim() || "23713874ZwrYRjcQxJPqCXfjRXLHXtWLfkmIU"; 
 
   if (!apiKey || apiKey.length < 10) {
     return new Response(JSON.stringify({ error: "API Key is missing or invalid" }), {
