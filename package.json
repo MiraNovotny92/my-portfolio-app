@@ -3,16 +3,18 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-"scripts": {
+  "scripts": {
     "start": "vite",
     "build": "CI=false vite build",
     "serve": "vite preview",
     "lint": "eslint ."
   },
   "dependencies": {
+    "firebase": "^12.8.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-firebase-hooks": "^5.1.1",
     "recharts": "^3.7.0"
   },
   "devDependencies": {
