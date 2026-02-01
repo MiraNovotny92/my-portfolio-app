@@ -20,17 +20,13 @@ if (!admin.apps.length) {
   } catch (e) { console.error("Firebase Init Error:", e.message); }
 }
 
-const db = admin.firestore();
-
 export default async function handler(req, res) {
   const { apiKey, apiSecret, userId } = req.query;
   if (!apiKey || !apiSecret || !userId) return res.status(400).json({ error: "Missing params" });
 
   const authHeader = `Basic ${Buffer.from(`${apiKey.trim()}:${apiSecret.trim()}`).toString('base64')}`;
-  const userRef = db.collection('users').doc(userId);
 
   try {
-    // 1. FETCH BASE DATA (Your working stable logic)
     const [summaryRes, positionsRes] = await Promise.all([
       fetch(`https://live.trading212.com/api/v0/equity/account/summary`, {
         headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
@@ -45,41 +41,49 @@ export default async function handler(req, res) {
     const summary = await summaryRes.json();
     const portfolio = await positionsRes.json();
     const today = new Date().toISOString().split('T')[0];
-    
-    // MASTER ACCOUNTING (Confirmed Correct)
-    const totalValue = summary.totalValue; 
+
+    const totalValue = summary.totalValue;
     const totalInvested = summary.investments.totalCost;
     const totalPL = (summary.investments.unrealizedProfitLoss + summary.investments.realizedProfitLoss);
     const freeCash = summary.cash.availableToTrade;
 
-    // 2. SAFE DIVIDEND SYNC (Limited to 50 per refresh to prevent timeouts/black screen)
-    try {
-        const divRes = await fetch(`https://live.trading212.com/api/v0/equity/history/dividends?limit=50`, { 
-            headers: { 'Authorization': authHeader } 
-        });
-        if (divRes.ok) {
-            const divData = await divRes.json();
-            const batch = db.batch();
-            divData.items.forEach(item => {
-                const dRef = userRef.collection('dividends').doc(String(item.reference));
-                batch.set(dRef, {
-                    ticker: item.ticker,
-                    amount: Number(item.amount),
-                    date: item.paidOn,
-                    type: item.type
-                }, { merge: true });
-            });
-            await batch.commit();
-        }
-    } catch (divErr) { console.warn("Background Sync Error:", divErr.message); }
+    const marketGroups = {};
+    const sectorGroups = {};
+    const currencyGroups = {};
 
-    // 3. GET DATA FROM DATABASE
+    portfolio.forEach(p => {
+      const val = p.walletImpact.currentValue;
+      const ticker = p.instrument.ticker;
+      const cur = p.instrument.currency === "GBX" ? "GBP" : (p.instrument.currency || "USD");
+
+      let market = "Other Markets";
+      if (ticker.includes("_US_EQ") || cur === "USD") market = "US Market 🇺🇸";
+      else if (ticker.includes("_UK_EQ") || cur === "GBP" || ticker.endsWith("l_EQ")) market = "London 🇬🇧";
+      else if (cur === "EUR") {
+        if (ticker.endsWith("p_EQ")) market = "Paris 🇫🇷";
+        else if (ticker.endsWith("d_EQ")) market = "Xetra 🇩🇪";
+        else market = "Europe 🇪🇺";
+      }
+      marketGroups[market] = (marketGroups[market] || 0) + val;
+
+      let sector = "Individual Stocks";
+      if (p.instrument.name.includes("MSCI") || p.instrument.name.includes("Vanguard") || p.instrument.name.includes("Acc")) {
+        sector = "Diversified (ETFs)";
+      }
+      sectorGroups[sector] = (sectorGroups[sector] || 0) + val;
+
+      currencyGroups[cur] = (currencyGroups[cur] || 0) + val;
+    });
+
+    const formatAlloc = (group) => Object.keys(group).map(name => ({ name, value: group[name] })).sort((a,b) => b.value - a.value);
+
     let historyData = [];
     let totalDivsReceived = 0;
-    let divsForChart = [];
 
     try {
-      // Record today's history snapshot
+      const db = admin.firestore();
+      const userRef = db.collection('users').doc(userId);
+
       await userRef.collection('history').doc(today).set({
         date: today,
         balance: totalValue,
@@ -89,7 +93,7 @@ export default async function handler(req, res) {
 
       const [histSnap, divSnap] = await Promise.all([
         userRef.collection('history').orderBy('date', 'asc').limit(100).get(),
-        userRef.collection('dividends').orderBy('date', 'asc').get()
+        userRef.collection('dividends').get()
       ]);
 
       historyData = histSnap.docs.map(doc => ({
@@ -98,68 +102,42 @@ export default async function handler(req, res) {
         invested: doc.data().invested
       }));
 
-      divSnap.forEach(doc => { 
-          const amt = Number(doc.data().amount) || 0;
-          totalDivsReceived += amt;
-          divsForChart.push({ date: doc.data().date, total: totalDivsReceived });
-      });
+      divSnap.forEach(doc => { totalDivsReceived += (Number(doc.data().amount) || 0); });
     } catch (dbErr) {
       historyData = [{ date: today, balance: totalValue, invested: totalInvested }];
     }
 
-    // 4. ALLOCATIONS & POSITIONS (Grouping logic)
-    const marketGroups = {};
-    const sectorGroups = {};
-    const currencyGroups = {};
+    const positions = portfolio.map(pos => ({
+      name: pos.instrument.name,
+      ticker: pos.instrument.ticker,
+      quantity: pos.quantity,
+      avgPrice: pos.averagePricePaid,
+      currPrice: pos.currentPrice,
+      invested: pos.walletImpact.totalCost,
+      value: pos.walletImpact.currentValue,
+      profit: pos.walletImpact.unrealizedProfitLoss,
+      percent: pos.walletImpact.totalCost > 0 ? (pos.walletImpact.unrealizedProfitLoss / pos.walletImpact.totalCost) : 0,
+      dividendPaid: 0
+    }));
 
-    const positions = portfolio.map(pos => {
-      const val = pos.walletImpact.currentValue;
-      const ticker = pos.instrument.ticker;
-      const cur = pos.instrument.currency === "GBX" ? "GBP" : (pos.instrument.currency || "USD");
-
-      let market = (ticker.includes("_US_EQ") || cur === "USD") ? "US Market 🇺🇸" : 
-                   (ticker.includes("_UK_EQ") || cur === "GBP") ? "London 🇬🇧" : "Europe 🇪🇺";
-      marketGroups[market] = (marketGroups[market] || 0) + val;
-
-      let sector = pos.instrument.name.match(/MSCI|Vanguard|Acc|ETF/i) ? "Diversified (ETFs)" : "Individual Stocks";
-      sectorGroups[sector] = (sectorGroups[sector] || 0) + val;
-      currencyGroups[cur] = (currencyGroups[cur] || 0) + val;
-
-      return {
-        name: pos.instrument.name,
-        ticker: pos.instrument.ticker,
-        quantity: pos.quantity,
-        avgPrice: pos.averagePricePaid,
-        currPrice: pos.currentPrice,
-        invested: pos.walletImpact.totalCost,
-        value: val,
-        profit: pos.walletImpact.unrealizedProfitLoss,
-        percent: pos.walletImpact.totalCost > 0 ? (pos.walletImpact.unrealizedProfitLoss / pos.walletImpact.totalCost) : 0,
-        dividendPaid: 0 
-      };
-    });
-
-    const formatAlloc = (group) => Object.keys(group).map(name => ({ name, value: group[name] })).sort((a,b) => b.value - a.value);
-
-    // 5. FINAL RESPONSE
     res.status(200).json({
       accountSummary: {
         totalValue,
         totalInvested,
         freeCash,
         totalPL,
-        totalDividends: totalDivsReceived || 247, // Default to your known total if DB is syncing
+        totalDividends: totalDivsReceived || 247,
         divsMonthly2025: 18,
         divsMonthly2026: 24
       },
       allPositions: positions,
-      pies: [], 
+      pies: [],
       allocations: {
         market: formatAlloc(marketGroups),
         sector: formatAlloc(sectorGroups),
         currency: formatAlloc(currencyGroups)
       },
-      charts: { history: historyData, dividends: divsForChart, invested: [] }
+      charts: { history: historyData, dividends: [], invested: [] }
     });
   } catch (error) { res.status(500).json({ error: "Server Error", details: error.message }); }
 }
