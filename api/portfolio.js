@@ -1,39 +1,45 @@
 export const config = { runtime: 'edge' };
 
 export default async function handler(req) {
-  // 1. GET PARAMETERS FROM URL
   const { searchParams } = new URL(req.url);
   const apiKey = searchParams.get('apiKey') || "";
   const apiSecret = searchParams.get('apiSecret') || "";
 
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "API Key is required" }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ error: "API Key is required" }), { status: 400 });
   }
 
-  // 2. CREATE THE BASIC AUTH HEADER
-  // T212 expects "ApiKey:ApiSecret" encoded in Base64
   const credentials = btoa(`${apiKey.trim()}:${apiSecret.trim()}`);
   const authHeader = `Basic ${credentials}`;
 
   const fetchT212 = async (subdomain) => {
+    // UPDATED HEADERS TO BYPASS CLOUDFLARE
     const headers = { 
       'Authorization': authHeader,
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      // Real browser User-Agent
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Referer': `https://${subdomain}.trading212.com/`,
+      'Origin': `https://${subdomain}.trading212.com/`
     };
 
     try {
-      // Fetch Account Summary
-      const summaryRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/account/summary`, { headers });
-      if (!summaryRes.ok) return { success: false, status: summaryRes.status, error: await summaryRes.text() };
+      const summaryRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/account/summary`, { 
+        headers,
+        mode: 'cors' 
+      });
+      
+      if (!summaryRes.ok) {
+        const errorText = await summaryRes.text();
+        return { success: false, status: summaryRes.status, error: errorText };
+      }
+      
       const summary = await summaryRes.json();
       
-      // Fetch Open Positions
       const portRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/positions`, { headers });
-      if (!portRes.ok) return { success: false, status: portRes.status };
       const portfolio = await portRes.json();
 
       return { success: true, summary, portfolio };
@@ -41,6 +47,8 @@ export default async function handler(req) {
       return { success: false, error: e.message };
     }
   };
+
+  // ... (rest of your existing logic)
 
   try {
     // Try Live server first
