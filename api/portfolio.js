@@ -12,71 +12,38 @@ export default async function handler(req) {
   const credentials = btoa(`${apiKey.trim()}:${apiSecret.trim()}`);
   const authHeader = `Basic ${credentials}`;
 
-  const fetchT212 = async (subdomain) => {
-    // UPDATED HEADERS TO BYPASS CLOUDFLARE
-    const headers = { 
-      'Authorization': authHeader,
-      'Accept': 'application/json',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-      // Real browser User-Agent
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Referer': `https://${subdomain}.trading212.com/`,
-      'Origin': `https://${subdomain}.trading212.com/`
-    };
+  const fetchT212 = async (subdomain, endpoint) => {
+    const targetUrl = `https://${subdomain}.trading212.com/api/v0/equity/${endpoint}`;
+    
+    // We use a public proxy to bypass Cloudflare's Vercel-specific block
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
     try {
-      const summaryRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/account/summary`, { 
-        headers,
-        mode: 'cors' 
+      const response = await fetch(proxyUrl, {
+        headers: {
+          'Authorization': authHeader,
+          'Accept': 'application/json'
+        }
       });
-      
-      if (!summaryRes.ok) {
-        const errorText = await summaryRes.text();
-        return { success: false, status: summaryRes.status, error: errorText };
-      }
-      
-      const summary = await summaryRes.json();
-      
-      const portRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/positions`, { headers });
-      const portfolio = await portRes.json();
 
-      return { success: true, summary, portfolio };
+      if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
+      
+      const wrapper = await response.json();
+      // allorigins returns the actual API response inside a "contents" string
+      return JSON.parse(wrapper.contents);
     } catch (e) {
-      return { success: false, error: e.message };
+      console.error(`Error fetching ${endpoint}:`, e);
+      throw e;
     }
   };
 
-  // ... (rest of your existing logic)
-
   try {
-    // Try Live server first
-    let result = await fetchT212('live');
-    
-    // If Live fails with Unauthorized, try Demo
-    if (!result.success && result.status === 401) {
-      result = await fetchT212('demo');
-    }
+    // Attempt to fetch via proxy
+    const summary = await fetchT212('live', 'account/summary');
+    const portfolio = await fetchT212('live', 'positions');
 
-    if (!result.success) {
-      return new Response(JSON.stringify({ 
-        error: "Connection Failed", 
-        debug_info: {
-          status: result.status,
-          details: result.error,
-          hint: "Ensure both API Key and Secret are entered correctly in the app setup."
-        }
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { summary, portfolio } = result;
-
-    // 3. TRANSLATE DATA TO YOUR DASHBOARD FORMAT
-    const positions = Array.isArray(portfolio) ? portfolio.map(pos => ({
+    // MAPPING DATA TO DASHBOARD
+    const positions = portfolio.map(pos => ({
       name: pos.instrument.name || pos.instrument.ticker,
       ticker: pos.instrument.ticker,
       quantity: pos.quantity,
@@ -86,14 +53,9 @@ export default async function handler(req) {
       value: pos.walletImpact.currentValue,
       profit: pos.walletImpact.unrealizedProfitLoss,
       percent: pos.walletImpact.totalCost > 0 ? (pos.walletImpact.unrealizedProfitLoss / pos.walletImpact.totalCost) : 0,
-      dividendPaid: 0 // API v0 doesn't provide per-stock dividend history easily
-    })) : [];
+      dividendPaid: 0
+    }));
 
-    const marketAlloc = positions
-      .map(p => ({ name: p.name, value: p.value }))
-      .sort((a, b) => b.value - a.value);
-
-    // This structure matches your 1000+ line App.jsx requirements
     const dashboardData = {
       accountSummary: {
         totalValue: summary.cash.total,
@@ -105,18 +67,13 @@ export default async function handler(req) {
         divsMonthly2026: 0
       },
       allPositions: positions,
-      pies: [], 
-      allocations: { 
-        market: marketAlloc, 
-        sector: [], 
-        currency: [] 
+      pies: [],
+      allocations: {
+        market: positions.map(p => ({ name: p.name, value: p.value })).sort((a,b) => b.value - a.value),
+        sector: [],
+        currency: []
       },
-      // Important: Empty arrays prevent ".map is not a function" errors in your charts
-      charts: { 
-        invested: [], 
-        dividends: [], 
-        history: [] 
-      }
+      charts: { invested: [], dividends: [], history: [] }
     };
 
     return new Response(JSON.stringify(dashboardData), {
@@ -125,9 +82,9 @@ export default async function handler(req) {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ 
+      error: "Cloudflare/Proxy Blocked", 
+      debug_info: { details: error.message } 
+    }), { status: 500 });
   }
 }
