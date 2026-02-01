@@ -1,6 +1,6 @@
 // api/portfolio.js
 export default async function handler(req, res) {
-  const apiKey = "23713874ZwrYRjcQxJPqCXfjRXLHXtWLfkmIU";
+  const apiKey = "23713874ZXmqDynruBrDNmaKjIbrBgDHMeOtO";
 
   if (!apiKey) return res.status(400).json({ error: "No API Key received" });
 
