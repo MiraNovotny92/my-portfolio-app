@@ -1,30 +1,29 @@
-export const config = { runtime: 'edge' };
-
-export default async function handler(req) {
-  const { searchParams } = new URL(req.url);
-  const apiKey = searchParams.get('apiKey') || "";
-  const apiSecret = searchParams.get('apiSecret') || "";
+// Remove the 'edge' config - it's too easy for Cloudflare to detect
+export default async function handler(req, res) {
+  const { apiKey, apiSecret } = req.query;
 
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "API Key is required" }), { status: 400 });
+    return res.status(400).json({ error: "API Key is required" });
   }
 
-  // Create the auth header
-  const authHeader = `Basic ${btoa(`${apiKey.trim()}:${apiSecret.trim()}`)}`;
+  // Basic Auth encoding
+  const authHeader = `Basic ${Buffer.from(`${apiKey.trim()}:${apiSecret.trim()}`).toString('base64')}`;
 
   const fetchT212 = async (subdomain, endpoint) => {
     const url = `https://${subdomain}.trading212.com/api/v0/equity/${endpoint}`;
     
-    // We are going back to DIRECT fetch but with very specific 'browser-mimic' headers
-    // Cloudflare is less likely to block 1MB+ data if the headers look like a standard Mac/Chrome user.
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': authHeader,
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
         'Accept-Language': 'en-GB,en;q=0.9',
-        'Referer': 'https://www.trading212.com/',
+        'Connection': 'keep-alive',
+        // This specific User-Agent is less likely to be blocked
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'cross-site'
       }
     });
 
@@ -36,12 +35,11 @@ export default async function handler(req) {
   };
 
   try {
-    // 1. Fetch data directly (No Proxy = No 1MB Limit)
-    // We fetch one by one to avoid triggering rate limits
+    // 1. Fetch data directly
     const summary = await fetchT212('live', 'account/summary');
     const portfolio = await fetchT212('live', 'positions');
 
-    // 2. Map positions (This is where your 1000+ line App.jsx gets its fuel)
+    // 2. Map positions
     const positions = portfolio.map(pos => ({
       name: pos.instrument.name || pos.instrument.ticker,
       ticker: pos.instrument.ticker,
@@ -55,7 +53,7 @@ export default async function handler(req) {
       dividendPaid: 0
     }));
 
-    // 3. Build the final response
+    // 3. Build Dashboard JSON
     const dashboardData = {
       accountSummary: {
         totalValue: summary.cash.total,
@@ -76,16 +74,13 @@ export default async function handler(req) {
       charts: { invested: [], dividends: [], history: [] }
     };
 
-    return new Response(JSON.stringify(dashboardData), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return res.status(200).json(dashboardData);
 
   } catch (error) {
-    // If we get blocked again, we will see it here
-    return new Response(JSON.stringify({ 
+    console.error("Sync Error:", error.message);
+    return res.status(500).json({ 
       error: "Sync Failed", 
       debug_info: { details: error.message } 
-    }), { status: 500 });
+    });
   }
 }
