@@ -1,47 +1,69 @@
 export default async function handler(req, res) {
-  // TRICK: .trim() removes accidental spaces from copy-pasting
-  const apiKey = (req.query.apiKey || "").trim();
+  // 1. CLEAN THE KEY (Remove accidental spaces)
+  const rawKey = req.query.apiKey || "";
+  const apiKey = rawKey.trim();
 
-  if (!apiKey) return res.status(400).json({ error: "API Key is required" });
+  if (!apiKey) return res.status(400).json({ error: "API Key is missing" });
 
+  // Helper to fetch from T212 with detailed error tracking
   const fetchT212 = async (subdomain) => {
     try {
-      const cashRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/account/cash`, {
+      const url = `https://${subdomain}.trading212.com/api/v0/equity/account/cash`;
+      const res = await fetch(url, {
         headers: { 'Authorization': apiKey }
       });
-      // If the key is wrong, this will return 401 (Unauthorized)
-      if (!cashRes.ok) return null;
 
+      if (!res.ok) {
+        // If it fails, return the SPECIFIC error from T212
+        const text = await res.text();
+        return { success: false, status: res.status, error: text };
+      }
+
+      const cash = await res.json();
+      
+      // If cash worked, get portfolio
       const portRes = await fetch(`https://${subdomain}.trading212.com/api/v0/equity/portfolio`, {
         headers: { 'Authorization': apiKey }
       });
-      if (!portRes.ok) return null;
       
-      return { 
-        cash: await cashRes.json(), 
-        portfolio: await portRes.json() 
-      };
+      if (!portRes.ok) return { success: false, status: portRes.status, error: "Portfolio fetch failed" };
+      
+      const portfolio = await portRes.json();
+      return { success: true, cash, portfolio };
+
     } catch (e) {
-      return null;
+      return { success: false, status: 500, error: e.message };
     }
   };
 
   try {
     // 1. Try LIVE server
-    let data = await fetchT212('live');
+    let result = await fetchT212('live');
 
-    // 2. Try DEMO server
-    if (!data) data = await fetchT212('demo');
-
-    if (!data) {
-      // If both fail, it's definitely the Key or Permissions
-      return res.status(401).json({ error: "T212 rejected the key. Check permissions (Account & Portfolio)." });
+    // 2. If LIVE failed with 401 (Unauthorized), try DEMO
+    if (!result.success) {
+      console.log(`Live failed (${result.status}), trying Demo...`);
+      const demoResult = await fetchT212('demo');
+      
+      // If Demo works, use it. If not, stick with the Live error to show the user.
+      if (demoResult.success) {
+        result = demoResult;
+      }
     }
 
-    const { cash, portfolio } = data;
+    // 3. IF STILL FAILING -> RETURN THE EXACT ERROR DETAILS
+    if (!result.success) {
+      return res.status(result.status || 500).json({ 
+        error: "Connection Failed", 
+        details: result.error, // <--- THIS IS WHAT WE NEED TO SEE
+        server_status: result.status 
+      });
+    }
 
-    // --- TRANSLATION LAYER ---
-    const positions = portfolio.map(pos => ({
+    const { cash, portfolio } = result;
+
+    // --- TRANSLATION LAYER (Standard logic) ---
+    const positions = Array.isArray(portfolio) ? portfolio.map(pos => ({
       name: pos.ticker,
       quantity: pos.quantity,
       avgPrice: pos.averagePrice,
@@ -51,7 +73,7 @@ export default async function handler(req, res) {
       profit: pos.ppl,
       percent: (pos.ppl / (pos.averagePrice * pos.quantity)),
       dividendPaid: 0
-    }));
+    })) : [];
 
     const marketAlloc = positions.map(p => ({ name: p.name, value: p.value })).sort((a, b) => b.value - a.value);
 
