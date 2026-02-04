@@ -867,11 +867,19 @@ export default function App() {
             backdropFilter: 'blur(16px)', 
             WebkitBackdropFilter: 'blur(16px)'
         }}>
-          <div>
-            <h1 style={{fontSize: '20px', fontWeight: '900', margin: 0}}>
-              Jamiez <span style={{color: '#10b981'}}>Portfolio</span>
-            </h1>
-            {usingCache && !loading && <span style={{fontSize:'10px', color: theme.sub}}>MN</span>}
+            <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+            {/* ZDE JE TVOJE NOVE LOGO */}
+            <img 
+              src="/logo192.png" 
+              alt="Logo" 
+              style={{height: '40px', width: '40px', borderRadius: '8px'}} 
+            />
+            <div>
+              <h1 style={{fontSize: '20px', fontWeight: '900', margin: 0}}>
+                Jamiez <span style={{color: '#10b981'}}>Portfolio</span>
+              </h1>
+              {usingCache && !loading && <span style={{fontSize:'10px', color: theme.sub}}>MN</span>}
+            </div>
           </div>
           <div style={{display: 'flex', gap: '8px'}}>
             <button 
