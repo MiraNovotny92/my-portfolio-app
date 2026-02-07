@@ -4,8 +4,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, Tooltip, ResponsiveContainer 
 } from 'recharts';
 
-const DividendsTab = ({ chartData, theme }) => {
-  // 1. Process Chart Data
+// 1. ACCEPT THE PROP HERE ("totalDividends")
+const DividendsTab = ({ chartData, theme, totalDividends }) => {
+  
   const snowballData = useMemo(() => {
     return (chartData?.dividends || []).map(item => {
       const d = new Date(item.date);
@@ -16,12 +17,10 @@ const DividendsTab = ({ chartData, theme }) => {
     });
   }, [chartData]);
 
-  // 2. Process Monthly Bars
   const monthlyIncomeData = useMemo(() => {
     const raw = chartData?.dividends || [];
     if (!raw.length) return [];
     
-    // Calculate differences between cumulative totals to get individual payments
     const increments = raw.map((item, i) => {
        const prevTotal = i > 0 ? raw[i-1].total : 0;
        const amount = item.total - prevTotal;
@@ -46,18 +45,15 @@ const DividendsTab = ({ chartData, theme }) => {
     });
   }, [chartData]);
 
-  // 3. DYNAMIC YEARLY STATS (The Fix)
   const yearlyStats = useMemo(() => {
     const raw = chartData?.dividends || [];
     if (raw.length === 0) return [];
 
-    // Calculate individual payments first
     const payments = raw.map((item, i) => {
        const prevTotal = i > 0 ? raw[i-1].total : 0;
        return { date: item.date, amount: item.total - prevTotal };
     });
 
-    // Group by Year
     const byYear = {};
     payments.forEach(p => {
         const year = new Date(p.date).getFullYear();
@@ -65,18 +61,16 @@ const DividendsTab = ({ chartData, theme }) => {
         byYear[year] += p.amount;
     });
 
-    // Determine current month for averaging
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    // Convert to Array and Sort Descending (Newest Year First)
     return Object.keys(byYear).sort((a,b) => b - a).map(year => {
         const y = parseInt(year);
         const total = byYear[year];
         let divisor = 12;
-        if (y === currentYear) divisor = currentMonth; // Average over months passed so far
-        if (y > currentYear) divisor = 1; // Future year edge case
+        if (y === currentYear) divisor = currentMonth; 
+        if (y > currentYear) divisor = 1; 
 
         return { year: y, total, avg: total / divisor };
     });
@@ -95,7 +89,6 @@ const DividendsTab = ({ chartData, theme }) => {
 
   return (
     <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-      {/* HEADER CARD */}
       <div style={{
         background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', padding: '30px', 
         borderRadius: '32px', color: '#fff', boxShadow: '0 10px 30px -10px rgba(16, 185, 129, 0.5)'
@@ -104,15 +97,16 @@ const DividendsTab = ({ chartData, theme }) => {
           <TrendingUp size={20} color="#fff" style={{opacity: 0.8}}/>
           <p style={{fontSize: '11px', opacity: 0.9, fontWeight: 'bold', letterSpacing: '1px'}}>DIVIDEND SNOWBALL</p>
         </div>
-        <p style={{margin: 0, fontWeight: '900'}}>{(summary.totalDividends || 0).toLocaleString()}</p>
+        
+        {/* 2. USE THE PROP HERE DIRECTLY */}
         <h2 style={{fontSize: '42px', fontWeight: '900', margin: '0'}}>
-          {(chartData?.dividends?.length > 0 ? chartData.dividends[chartData.dividends.length-1].total : 0).toLocaleString()} 
+          {(totalDividends || 0).toLocaleString()} 
           <span style={{fontSize: '16px', opacity: 0.8}}> CZK</span>
         </h2>
+        
         <p style={{fontSize: '12px', opacity: 0.8, marginTop: '4px'}}>Cumulative Passive Income</p>
       </div>
       
-      {/* DYNAMIC YEARS ROW */}
       <div style={{display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '4px'}}>
         {yearlyStats.length > 0 ? (
             yearlyStats.map(stat => (
@@ -125,7 +119,6 @@ const DividendsTab = ({ chartData, theme }) => {
         )}
       </div>
 
-      {/* MONTHLY CHART */}
       <div style={{background: theme.card, padding: '20px', borderRadius: '28px', border: '1px solid ' + theme.border}}>
         <h3 style={{fontSize: '11px', fontWeight: 'bold', color: theme.sub, marginBottom: '20px', textAlign: 'center'}}>MONTHLY INCOME HISTORY</h3>
         <div style={{height: '220px'}}>
@@ -147,7 +140,6 @@ const DividendsTab = ({ chartData, theme }) => {
         </div>
       </div>
 
-      {/* CUMULATIVE CHART */}
       <div style={{background: theme.card, padding: '20px', borderRadius: '28px', border: '1px solid ' + theme.border}}>
         <h3 style={{fontSize: '11px', fontWeight: 'bold', color: theme.sub, marginBottom: '20px', textAlign: 'center'}}>CUMULATIVE GROWTH</h3>
         <div style={{height: '220px'}}>

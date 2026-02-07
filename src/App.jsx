@@ -674,7 +674,13 @@ const ListSortButton = ({ id, label }) => {
             
             {activeTab === 'pies' && <PiesTab pies={data.pies} theme={theme} />}
             {activeTab === 'analytics' && <AnalyticsTab stocks={stocksOnly} chartData={data.charts} theme={theme} />}
-            {activeTab === 'dividends' && <DividendsTab chartData={data.charts} theme={theme} />}
+            {activeTab === 'dividends' && (
+  <DividendsTab 
+    chartData={data.charts} 
+    theme={theme} 
+    totalDividends={data.accountSummary.totalDividends} 
+  />
+)}
           </main>
         )}
 
