@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-// NEW: Import Firebase Auth hooks and tools
 import { useAuthState } from 'react-firebase-hooks/auth';
-// IMPORTANT: We added getUserUrl and saveUserUrl here
 import { auth, loginWithGoogle, logout, getUserUrl, saveUserUrl } from './firebase';
+
+// IMPORT YOUR NEW COMPONENTS
+import Rankings from './components/Rankings';
+import DividendsTab from './components/DividendsTab';
 
 import { 
   LayoutDashboard, List, BarChart3, Landmark, Sun, 
-  RefreshCw, Search, WifiOff, Globe, Briefcase, Banknote, TrendingUp,
+  RefreshCw, Search, Globe, Briefcase, Banknote, TrendingUp,
   PieChart as PieIcon, ArrowRight, ArrowUpDown, ArrowUp, ArrowDown, 
   LogOut, Settings, ShieldCheck, Key
 } from 'lucide-react';
@@ -15,9 +17,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area
 } from 'recharts';
 
-// We removed the hardcoded SCRIPT_URL constant because we load it from the DB now
 const CACHE_KEY = "portfolio_data_v4";
-
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#fbbf24', '#ec4899'];
 
 // --- SUB-COMPONENT: ALLOCATION LIST ---
@@ -37,11 +37,7 @@ const AllocationList = ({ title, icon: Icon, data, theme, color }) => {
       <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px'}}>
         <Icon size={14} color={color} />
         <p style={{
-          fontSize: '11px', 
-          fontWeight: 'bold', 
-          color: theme.sub, 
-          textTransform: 'uppercase', 
-          margin: 0
+          fontSize: '11px', fontWeight: 'bold', color: theme.sub, textTransform: 'uppercase', margin: 0
         }}>
           {title}
         </p>
@@ -62,81 +58,6 @@ const AllocationList = ({ title, icon: Icon, data, theme, color }) => {
     </div>
   );
 };
-
-// --- SUB-COMPONENT: RANKINGS ---
-const Rankings = ({ stocks, theme }) => {
-  // We add state here to toggle visibility
-  const [showGainers, setShowGainers] = useState(true);
-  const [showLosers, setShowLosers] = useState(false);
-
-  const top10 = useMemo(() => [...stocks].sort((a, b) => b.profit - a.profit).slice(0, 10), [stocks]);
-  const bottom10 = useMemo(() => [...stocks].sort((a, b) => a.profit - b.profit).slice(0, 10), [stocks]);
-  
-  return (
-    <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px'}}>
-      
-      {/* GAINERS BLOCK */}
-      <div style={{background: theme.card, padding: '16px', borderRadius: '24px', border: '1px solid ' + theme.border}}>
-        <div 
-          onClick={() => setShowGainers(!showGainers)} 
-          style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: showGainers ? '12px' : '0'}}
-        >
-          <p style={{fontSize: '14px', fontWeight: 'bold', color: '#10b981', margin: 0}}>🏆 TOP GAINERS</p>
-          <span style={{fontSize: '18px', color: theme.sub, fontWeight: 'bold'}}>{showGainers ? '−' : '+'}</span>
-        </div>
-        
-        {showGainers && top10.map((s, i) => (
-          <div key={i} style={{
-            fontSize: '12px', 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            padding: '10px 0', 
-            borderBottom: '1px solid ' + theme.border
-          }}>
-            <span style={{fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px', minWidth: 0}}>
-              {s.name}
-            </span>
-            <span style={{color: '#10b981', fontWeight: 'bold', whiteSpace: 'nowrap', textAlign: 'right'}}>
-              +{(s.profit || 0).toLocaleString()} <span style={{fontSize: '10px', opacity: 0.7}}>({((s.percent || 0)*100).toFixed(1)}%)</span>
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* LOSERS BLOCK */}
-      <div style={{background: theme.card, padding: '16px', borderRadius: '24px', border: '1px solid ' + theme.border}}>
-        <div 
-          onClick={() => setShowLosers(!showLosers)} 
-          style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: showLosers ? '12px' : '0'}}
-        >
-          <p style={{fontSize: '14px', fontWeight: 'bold', color: '#ef4444', margin: 0}}>📉 TOP LOSERS</p>
-          <span style={{fontSize: '18px', color: theme.sub, fontWeight: 'bold'}}>{showLosers ? '−' : '+'}</span>
-        </div>
-
-        {showLosers && bottom10.map((s, i) => (
-          <div key={i} style={{
-            fontSize: '12px', 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            padding: '10px 0', 
-            borderBottom: '1px solid ' + theme.border
-          }}>
-            <span style={{fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px', minWidth: 0}}>
-              {s.name}
-            </span>
-            <span style={{color: '#ef4444', fontWeight: 'bold', whiteSpace: 'nowrap', textAlign: 'right'}}>
-              {(s.profit || 0).toLocaleString()} <span style={{fontSize: '10px', opacity: 0.7}}>({((s.percent || 0)*100).toFixed(1)}%)</span>
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-
 
 // --- SUB-COMPONENT: PIES TAB ---
 const PiesTab = ({ pies, theme }) => {
@@ -169,20 +90,10 @@ const PiesTab = ({ pies, theme }) => {
       <button 
         onClick={() => handleSort(id)}
         style={{
-          flex: 1,
-          padding: '8px 4px',
-          fontSize: '10px',
-          fontWeight: 'bold',
-          borderRadius: '12px',
-          border: 'none',
-          background: isActive ? theme.text : theme.card,
-          color: isActive ? theme.bg : theme.sub,
-          border: isActive ? 'none' : '1px solid ' + theme.border,
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '4px',
-          cursor: 'pointer'
+          flex: 1, padding: '8px 4px', fontSize: '10px', fontWeight: 'bold', borderRadius: '12px',
+          border: 'none', background: isActive ? theme.text : theme.card,
+          color: isActive ? theme.bg : theme.sub, border: isActive ? 'none' : '1px solid ' + theme.border,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer'
         }}
       >
         {label}
@@ -243,153 +154,7 @@ const PiesTab = ({ pies, theme }) => {
   );
 };
 
-// --- SUB-COMPONENT: DIVIDENDS ---
-const DividendsTab = ({ chartData, theme }) => {
-  const snowballData = useMemo(() => {
-    return (chartData?.dividends || []).map(item => {
-      const d = new Date(item.date);
-      return {
-        ...item,
-        displayDate: !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : item.date,
-        fullDate: !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : item.date
-      };
-    });
-  }, [chartData]);
-
-  const monthlyIncomeData = useMemo(() => {
-    const raw = chartData?.dividends || [];
-    if (!raw.length) return [];
-    
-    const increments = raw.map((item, i) => {
-       const prevTotal = i > 0 ? raw[i-1].total : 0;
-       const amount = item.total - prevTotal;
-       return { date: item.date, amount: amount > 0 ? amount : 0 };
-    });
-
-    const grouped = {};
-    increments.forEach(item => {
-      const d = new Date(item.date);
-      if (isNaN(d.getTime())) return;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (!grouped[key]) grouped[key] = { amount: 0, dateObj: d };
-      grouped[key].amount += item.amount;
-    });
-
-    return Object.keys(grouped).sort().map(key => {
-      const { amount, dateObj } = grouped[key];
-      return {
-        amount,
-        displayDate: dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        fullDate: dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-      };
-    });
-  }, [chartData]);
-
-  const yearlyStats = useMemo(() => {
-    const raw = chartData?.dividends || [];
-    if (raw.length === 0) return {};
-    const getMaxInYear = (year) => {
-      const entries = raw.filter(d => new Date(d.date).getFullYear() === year);
-      return entries.length === 0 ? 0 : entries[entries.length - 1].total;
-    };
-    const total2024 = getMaxInYear(2024);
-    const total2025 = getMaxInYear(2025) - (raw.some(d => new Date(d.date).getFullYear() === 2024) ? getMaxInYear(2024) : 0);
-    const total2026 = getMaxInYear(2026) - getMaxInYear(2025);
-    return {
-      2024: { total: total2024, avg: total2024 / 12 },
-      2025: { total: total2025, avg: total2025 / 12 },
-      2026: { total: total2026, avg: total2026 / 1 }
-    };
-  }, [chartData]);
-
-  const StatCard = ({ year, data, color }) => (
-    <div style={{background: theme.card, padding: '16px', borderRadius: '20px', border: '1px solid ' + theme.border, flex: 1}}>
-      <p style={{fontSize: '10px', color: theme.sub, fontWeight: 'bold', marginBottom: '4px'}}>{year} TOTAL</p>
-      <p style={{fontSize: '18px', fontWeight: '900', color: color, margin: 0}}>{(data?.total || 0).toFixed(0)}</p>
-      <div style={{marginTop: '8px', paddingTop: '8px', borderTop: '1px solid '+theme.border}}>
-         <p style={{fontSize: '9px', color: theme.sub}}>MONTHLY AVG</p>
-         <p style={{fontSize: '12px', fontWeight: 'bold'}}>{(data?.avg || 0).toFixed(1)}</p>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-      <div style={{
-        background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
-        padding: '30px', 
-        borderRadius: '32px', 
-        color: '#fff', 
-        boxShadow: '0 10px 30px -10px rgba(16, 185, 129, 0.5)'
-      }}>
-        <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px'}}>
-          <TrendingUp size={20} color="#fff" style={{opacity: 0.8}}/>
-          <p style={{fontSize: '11px', opacity: 0.9, fontWeight: 'bold', letterSpacing: '1px'}}>DIVIDEND SNOWBALL</p>
-        </div>
-        <h2 style={{fontSize: '42px', fontWeight: '900', margin: '0'}}>
-          {(chartData?.dividends?.length > 0 ? chartData.dividends[chartData.dividends.length-1].total : 0).toLocaleString()} 
-          <span style={{fontSize: '16px', opacity: 0.8}}> CZK</span>
-        </h2>
-        <p style={{fontSize: '12px', opacity: 0.8, marginTop: '4px'}}>Cumulative Passive Income</p>
-      </div>
-      
-      <div style={{display: 'flex', gap: '12px'}}>
-        <StatCard year="2024" data={yearlyStats[2024]} color={theme.sub} />
-        <StatCard year="2025" data={yearlyStats[2025]} color="#3b82f6" />
-        <StatCard year="2026" data={yearlyStats[2026]} color="#10b981" />
-      </div>
-
-      <div style={{background: theme.card, padding: '20px', borderRadius: '28px', border: '1px solid ' + theme.border}}>
-        <h3 style={{fontSize: '11px', fontWeight: 'bold', color: theme.sub, marginBottom: '20px', textAlign: 'center'}}>MONTHLY INCOME HISTORY</h3>
-        <div style={{height: '220px'}}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlyIncomeData} margin={{ left: -10, right: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.border} opacity={0.3} />
-              <XAxis dataKey="displayDate" stroke={theme.sub} fontSize={10} tickLine={false} axisLine={true} minTickGap={10} />
-              <YAxis stroke={theme.sub} fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}/>
-              <Tooltip 
-                cursor={{fill: theme.text, opacity: 0.05}} 
-                contentStyle={{background: theme.card, border: '1px solid '+theme.border, borderRadius: '12px'}} 
-                labelStyle={{color: theme.text, fontWeight: 'bold'}} 
-                itemStyle={{color: '#10b981'}} 
-                formatter={(value) => [value.toLocaleString() + ' CZK', 'Income']}
-              />
-              <Bar dataKey="amount" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={50} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div style={{background: theme.card, padding: '20px', borderRadius: '28px', border: '1px solid ' + theme.border}}>
-        <h3 style={{fontSize: '11px', fontWeight: 'bold', color: theme.sub, marginBottom: '20px', textAlign: 'center'}}>CUMULATIVE GROWTH</h3>
-        <div style={{height: '220px'}}>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={snowballData} margin={{ left: -10, right: 10 }}>
-              <defs>
-                <linearGradient id="colorDivs" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme.border} opacity={0.3} />
-              <XAxis dataKey="displayDate" stroke={theme.sub} fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
-              <YAxis stroke={theme.sub} fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}/>
-              <Tooltip 
-                contentStyle={{background: theme.card, border: '1px solid '+theme.border, borderRadius: '12px'}} 
-                labelStyle={{color: theme.text, fontWeight: 'bold'}} 
-                itemStyle={{color: '#10b981'}} 
-                formatter={(value) => [value.toLocaleString() + ' CZK', 'Total Income']}
-              />
-              <Area type="monotone" dataKey="total" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorDivs)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- SUB-COMPONENT: ANALYTICS (TIME MACHINE ADDED) ---
+// --- SUB-COMPONENT: ANALYTICS ---
 const AnalyticsTab = ({ stocks, chartData, theme }) => {
   const investData = useMemo(() => {
     return (chartData?.invested || []).map(item => {
@@ -416,7 +181,7 @@ const AnalyticsTab = ({ stocks, chartData, theme }) => {
   return (
     <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
       
-      {/* TIME MACHINE CHART (THE HARDEST THING) */}
+      {/* TIME MACHINE CHART */}
       <div style={{background: theme.card, padding: '20px', borderRadius: '28px', border: '1px solid ' + theme.border}}>
         <div style={{display:'flex', alignItems:'center', gap:'8px', justifyContent:'center', marginBottom:'20px'}}>
            <TrendingUp size={16} color="#10b981" />
@@ -500,11 +265,7 @@ const SummaryCard = ({ summary, theme }) => {
 
   return (
     <div style={{
-      background: theme.card, 
-      padding: '24px', 
-      borderRadius: '28px', 
-      border: '1px solid ' + theme.border, 
-      textAlign: 'center'
+      background: theme.card, padding: '24px', borderRadius: '28px', border: '1px solid ' + theme.border, textAlign: 'center'
     }}>
       <p style={{fontSize: '11px', color: theme.sub, fontWeight: 'bold', textTransform: 'uppercase'}}>Current Balance</p>
       <h2 style={{fontSize: '42px', fontWeight: '900', margin: '8px 0', letterSpacing: '-1px'}}>
@@ -512,13 +273,8 @@ const SummaryCard = ({ summary, theme }) => {
         <span style={{fontSize: '16px', opacity: 0.5, marginLeft: '6px'}}>CZK</span>
       </h2>
       <div style={{
-        display: 'grid', 
-        gridTemplateColumns: '1fr 1fr 1fr', 
-        gap: '8px', 
-        margin: '20px 0', 
-        padding: '16px 0', 
-        borderTop: '1px solid '+theme.border, 
-        borderBottom: '1px solid '+theme.border
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', margin: '20px 0', 
+        padding: '16px 0', borderTop: '1px solid '+theme.border, borderBottom: '1px solid '+theme.border
       }}>
           <div>
             <p style={{fontSize: '9px', color: theme.sub, fontWeight: 'bold'}}>INVESTED</p>
@@ -771,19 +527,10 @@ export default function App() {
       <button 
         onClick={() => handleListSort(id)}
         style={{
-          padding: '6px 12px',
-          fontSize: '9px',
-          fontWeight: 'bold',
-          borderRadius: '10px',
-          border: 'none',
-          background: isActive ? theme.text : theme.card,
-          color: isActive ? theme.bg : theme.sub,
-          border: isActive ? 'none' : '1px solid ' + theme.border,
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '4px',
-          whiteSpace: 'nowrap',
-          cursor: 'pointer'
+          padding: '6px 12px', fontSize: '9px', fontWeight: 'bold', borderRadius: '10px',
+          border: 'none', background: isActive ? theme.text : theme.card,
+          color: isActive ? theme.bg : theme.sub, border: isActive ? 'none' : '1px solid ' + theme.border,
+          display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', cursor: 'pointer'
         }}
       >
         {label}
@@ -802,17 +549,8 @@ export default function App() {
          <h1 style={{fontSize: '2rem', fontWeight: 'bold'}}>Jamiez Portfolio</h1>
          <p style={{color: '#888'}}>Sign in to view the dashboard</p>
          <button onClick={loginWithGoogle} style={{
-           padding: '12px 24px',
-           fontSize: '16px',
-           borderRadius: '12px',
-           border: 'none',
-           background: '#fff',
-           color: '#000',
-           fontWeight: 'bold',
-           cursor: 'pointer',
-           display: 'flex',
-           alignItems: 'center',
-           gap: '8px'
+           padding: '12px 24px', fontSize: '16px', borderRadius: '12px', border: 'none', background: '#fff', color: '#000',
+           fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
          }}>
            Sign in with Google
          </button>
@@ -820,7 +558,6 @@ export default function App() {
     );
   }
 
-  // UPDATED SETUP SCREEN FOR KEY AND SECRET
   if (!isUrlSaved) {
     return (
       <div style={{height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: theme.bg, color: theme.text, gap: '20px', padding: '20px', textAlign: 'center'}}>
@@ -833,19 +570,14 @@ export default function App() {
            <div style={{position: 'relative'}}>
              <Key size={16} style={{position: 'absolute', left: '12px', top: '16px', color: theme.sub}} />
              <input 
-               value={inputKey}
-               onChange={(e) => setInputKey(e.target.value)}
-               placeholder="API Key"
+               value={inputKey} onChange={(e) => setInputKey(e.target.value)} placeholder="API Key"
                style={{width: '100%', padding: '16px 16px 16px 40px', borderRadius: '12px', border: '1px solid ' + theme.border, background: theme.card, color: theme.text}}
              />
            </div>
            <div style={{position: 'relative'}}>
              <ShieldCheck size={16} style={{position: 'absolute', left: '12px', top: '16px', color: theme.sub}} />
              <input 
-               value={inputSecret}
-               onChange={(e) => setInputSecret(e.target.value)}
-               placeholder="API Secret"
-               type="password"
+               value={inputSecret} onChange={(e) => setInputSecret(e.target.value)} placeholder="API Secret" type="password"
                style={{width: '100%', padding: '16px 16px 16px 40px', borderRadius: '12px', border: '1px solid ' + theme.border, background: theme.card, color: theme.text}}
              />
            </div>
@@ -862,25 +594,11 @@ export default function App() {
       <div style={{width: '100%', maxWidth: '1200px', position: 'relative'}}>
         
         <header style={{
-            position: 'sticky', 
-            top: 0, 
-            zIndex: 1000,
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            padding: '16px', 
-            borderBottom: '1px solid ' + theme.border,
-            background: theme.bg + 'cc', 
-            backdropFilter: 'blur(16px)', 
-            WebkitBackdropFilter: 'blur(16px)'
+            position: 'sticky', top: 0, zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            padding: '16px', borderBottom: '1px solid ' + theme.border, background: theme.bg + 'cc', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)'
         }}>
             <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-            {/* ZDE JE TVOJE NOVE LOGO */}
-            <img 
-              src="/logo192.png" 
-              alt="Logo" 
-              style={{height: '40px', width: '40px', borderRadius: '8px'}} 
-            />
+            <img src="/logo192.png" alt="Logo" style={{height: '40px', width: '40px', borderRadius: '8px'}} />
             <div>
               <h1 style={{fontSize: '20px', fontWeight: '900', margin: 0}}>
                 Jamiez <span style={{color: '#10b981'}}>Portfolio</span>
@@ -889,30 +607,12 @@ export default function App() {
             </div>
           </div>
           <div style={{display: 'flex', gap: '8px'}}>
-            <button 
-              onClick={() => setIsUrlSaved(false)} 
-              style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.sub}}
-            >
-              <Settings size={18}/>
-            </button>
-            <button 
-              onClick={() => setIsDark(!isDark)} 
-              style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.text}}
-            >
-              <Sun size={18}/>
-            </button>
-            <button 
-              onClick={() => fetchData(null)} 
-              style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.text}}
-            >
+            <button onClick={() => setIsUrlSaved(false)} style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.sub}}><Settings size={18}/></button>
+            <button onClick={() => setIsDark(!isDark)} style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.text}}><Sun size={18}/></button>
+            <button onClick={() => fetchData(null)} style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: theme.text}}>
               {loading ? <RefreshCw className="animate-spin" size={18}/> : <RefreshCw size={18}/>}
             </button>
-            <button 
-              onClick={logout} 
-              style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: '#ef4444'}}
-            >
-              <LogOut size={18}/>
-            </button>
+            <button onClick={logout} style={{background: theme.card, border: '1px solid ' + theme.border, padding: '10px', borderRadius: '12px', color: '#ef4444'}}><LogOut size={18}/></button>
           </div>
         </header>
 
@@ -940,31 +640,11 @@ export default function App() {
             
             {activeTab === 'list' && (
               <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                <div style={{
-                  display:'flex', 
-                  alignItems:'center', 
-                  background: theme.card, 
-                  border: '1px solid '+theme.border, 
-                  padding:'12px 16px', 
-                  borderRadius:'18px'
-                }}>
+                <div style={{display:'flex', alignItems:'center', background: theme.card, border: '1px solid '+theme.border, padding:'12px 16px', borderRadius:'18px'}}>
                   <Search size={18} style={{marginRight:'12px', color:theme.sub}}/>
-                  <input 
-                    placeholder="Search assets..." 
-                    value={searchTerm} 
-                    onChange={(e) => setSearchTerm(e.target.value)} 
-                    style={{background:'none', border:'none', color:theme.text, width:'100%', outline:'none'}} 
-                  />
+                  <input placeholder="Search assets..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{background:'none', border:'none', color:theme.text, width:'100%', outline:'none'}} />
                 </div>
-
-                <div style={{
-                  display: 'flex', 
-                  gap: '8px', 
-                  overflowX: 'auto', 
-                  paddingBottom: '4px',
-                  msOverflowStyle: 'none',
-                  scrollbarWidth: 'none'
-                }}>
+                <div style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', msOverflowStyle: 'none', scrollbarWidth: 'none'}}>
                   <ListSortButton id="value" label="Value" />
                   <ListSortButton id="gain" label="Cap. Gain" />
                   <ListSortButton id="gainPct" label="Gain %" />
@@ -972,7 +652,6 @@ export default function App() {
                   <ListSortButton id="totRetPct" label="Return %" />
                   <ListSortButton id="divs" label="Dividends" />
                 </div>
-
                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                   {stocksOnly.filter(s => String(s.name).toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
                     <StockCard key={i} stock={s} theme={theme} />
@@ -988,42 +667,18 @@ export default function App() {
         )}
 
         <nav style={{
-          position: 'fixed', 
-          bottom: '25px', 
-          left: '50%', 
-          transform: 'translateX(-50%)', 
-          width: '92%', 
-          maxWidth: '650px', 
-          background: theme.card + 'cc', 
-          backdropFilter: 'blur(20px)', 
-          WebkitBackdropFilter: 'blur(20px)', 
-          padding: '10px', 
-          borderRadius: '40px', 
-          display: 'flex', 
-          border: '1px solid ' + theme.border, 
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)', 
-          zIndex: 1000
+          position: 'fixed', bottom: '25px', left: '50%', transform: 'translateX(-50%)', width: '92%', maxWidth: '650px', 
+          background: theme.card + 'cc', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', padding: '10px', 
+          borderRadius: '40px', display: 'flex', border: '1px solid ' + theme.border, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', zIndex: 1000
         }}>
           {[ 
-            { id: 'summary', icon: LayoutDashboard }, 
-            { id: 'list', icon: List }, 
-            { id: 'pies', icon: PieIcon }, 
-            { id: 'analytics', icon: BarChart3 }, 
-            { id: 'dividends', icon: Landmark } 
+            { id: 'summary', icon: LayoutDashboard }, { id: 'list', icon: List }, { id: 'pies', icon: PieIcon }, 
+            { id: 'analytics', icon: BarChart3 }, { id: 'dividends', icon: Landmark } 
           ].map((tab) => (
-            <button 
-              key={tab.id} 
-              onClick={() => setActiveTab(tab.id)} 
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} 
               style={{
-                flex: 1, 
-                background: activeTab === tab.id ? theme.text : 'transparent', 
-                color: activeTab === tab.id ? theme.bg : theme.sub, 
-                border: 'none', 
-                borderRadius: '30px', 
-                padding: '12px', 
-                display: 'flex', 
-                justifyContent: 'center', 
-                transition: '0.3s'
+                flex: 1, background: activeTab === tab.id ? theme.text : 'transparent', color: activeTab === tab.id ? theme.bg : theme.sub, 
+                border: 'none', borderRadius: '30px', padding: '12px', display: 'flex', justifyContent: 'center', transition: '0.3s'
               }}
             >
               <tab.icon size={22} />
