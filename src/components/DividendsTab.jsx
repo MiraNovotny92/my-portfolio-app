@@ -1,4 +1,3 @@
-// src/components/DividendsTab.jsx
 import React, { useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { 
@@ -6,21 +5,23 @@ import {
 } from 'recharts';
 
 const DividendsTab = ({ chartData, theme }) => {
+  // 1. Process Chart Data
   const snowballData = useMemo(() => {
     return (chartData?.dividends || []).map(item => {
       const d = new Date(item.date);
       return {
         ...item,
         displayDate: !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : item.date,
-        fullDate: !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : item.date
       };
     });
   }, [chartData]);
 
+  // 2. Process Monthly Bars
   const monthlyIncomeData = useMemo(() => {
     const raw = chartData?.dividends || [];
     if (!raw.length) return [];
     
+    // Calculate differences between cumulative totals to get individual payments
     const increments = raw.map((item, i) => {
        const prevTotal = i > 0 ? raw[i-1].total : 0;
        const amount = item.total - prevTotal;
@@ -41,47 +42,63 @@ const DividendsTab = ({ chartData, theme }) => {
       return {
         amount,
         displayDate: dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        fullDate: dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
       };
     });
   }, [chartData]);
 
+  // 3. DYNAMIC YEARLY STATS (The Fix)
   const yearlyStats = useMemo(() => {
     const raw = chartData?.dividends || [];
-    if (raw.length === 0) return {};
-    const getMaxInYear = (year) => {
-      const entries = raw.filter(d => new Date(d.date).getFullYear() === year);
-      return entries.length === 0 ? 0 : entries[entries.length - 1].total;
-    };
-    const total2024 = getMaxInYear(2024);
-    const total2025 = getMaxInYear(2025) - (raw.some(d => new Date(d.date).getFullYear() === 2024) ? getMaxInYear(2024) : 0);
-    const total2026 = getMaxInYear(2026) - getMaxInYear(2025);
-    return {
-      2024: { total: total2024, avg: total2024 / 12 },
-      2025: { total: total2025, avg: total2025 / 12 },
-      2026: { total: total2026, avg: total2026 / 1 }
-    };
+    if (raw.length === 0) return [];
+
+    // Calculate individual payments first
+    const payments = raw.map((item, i) => {
+       const prevTotal = i > 0 ? raw[i-1].total : 0;
+       return { date: item.date, amount: item.total - prevTotal };
+    });
+
+    // Group by Year
+    const byYear = {};
+    payments.forEach(p => {
+        const year = new Date(p.date).getFullYear();
+        if (!byYear[year]) byYear[year] = 0;
+        byYear[year] += p.amount;
+    });
+
+    // Determine current month for averaging
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    // Convert to Array and Sort Descending (Newest Year First)
+    return Object.keys(byYear).sort((a,b) => b - a).map(year => {
+        const y = parseInt(year);
+        const total = byYear[year];
+        let divisor = 12;
+        if (y === currentYear) divisor = currentMonth; // Average over months passed so far
+        if (y > currentYear) divisor = 1; // Future year edge case
+
+        return { year: y, total, avg: total / divisor };
+    });
   }, [chartData]);
 
-  const StatCard = ({ year, data, color }) => (
-    <div style={{background: theme.card, padding: '16px', borderRadius: '20px', border: '1px solid ' + theme.border, flex: 1}}>
+  const StatCard = ({ year, total, avg }) => (
+    <div style={{background: theme.card, padding: '16px', borderRadius: '20px', border: '1px solid ' + theme.border, minWidth: '100px', flex: 1}}>
       <p style={{fontSize: '10px', color: theme.sub, fontWeight: 'bold', marginBottom: '4px'}}>{year} TOTAL</p>
-      <p style={{fontSize: '18px', fontWeight: '900', color: color, margin: 0}}>{(data?.total || 0).toFixed(0)}</p>
+      <p style={{fontSize: '18px', fontWeight: '900', color: theme.text, margin: 0}}>{(total || 0).toFixed(0)}</p>
       <div style={{marginTop: '8px', paddingTop: '8px', borderTop: '1px solid '+theme.border}}>
          <p style={{fontSize: '9px', color: theme.sub}}>MONTHLY AVG</p>
-         <p style={{fontSize: '12px', fontWeight: 'bold'}}>{(data?.avg || 0).toFixed(1)}</p>
+         <p style={{fontSize: '12px', fontWeight: 'bold', color: '#10b981'}}>{(avg || 0).toFixed(1)}</p>
       </div>
     </div>
   );
 
   return (
     <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+      {/* HEADER CARD */}
       <div style={{
-        background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
-        padding: '30px', 
-        borderRadius: '32px', 
-        color: '#fff', 
-        boxShadow: '0 10px 30px -10px rgba(16, 185, 129, 0.5)'
+        background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', padding: '30px', 
+        borderRadius: '32px', color: '#fff', boxShadow: '0 10px 30px -10px rgba(16, 185, 129, 0.5)'
       }}>
         <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px'}}>
           <TrendingUp size={20} color="#fff" style={{opacity: 0.8}}/>
@@ -94,12 +111,20 @@ const DividendsTab = ({ chartData, theme }) => {
         <p style={{fontSize: '12px', opacity: 0.8, marginTop: '4px'}}>Cumulative Passive Income</p>
       </div>
       
-      <div style={{display: 'flex', gap: '12px'}}>
-        <StatCard year="2024" data={yearlyStats[2024]} color={theme.sub} />
-        <StatCard year="2025" data={yearlyStats[2025]} color="#3b82f6" />
-        <StatCard year="2026" data={yearlyStats[2026]} color="#10b981" />
+      {/* DYNAMIC YEARS ROW */}
+      <div style={{display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '4px'}}>
+        {yearlyStats.length > 0 ? (
+            yearlyStats.map(stat => (
+                <StatCard key={stat.year} year={stat.year} total={stat.total} avg={stat.avg} />
+            ))
+        ) : (
+            <div style={{width:'100%', textAlign:'center', padding:'20px', color: theme.sub, fontSize:'12px', border:'1px dashed '+theme.border, borderRadius:'12px'}}>
+                No dividend history found.
+            </div>
+        )}
       </div>
 
+      {/* MONTHLY CHART */}
       <div style={{background: theme.card, padding: '20px', borderRadius: '28px', border: '1px solid ' + theme.border}}>
         <h3 style={{fontSize: '11px', fontWeight: 'bold', color: theme.sub, marginBottom: '20px', textAlign: 'center'}}>MONTHLY INCOME HISTORY</h3>
         <div style={{height: '220px'}}>
@@ -121,6 +146,7 @@ const DividendsTab = ({ chartData, theme }) => {
         </div>
       </div>
 
+      {/* CUMULATIVE CHART */}
       <div style={{background: theme.card, padding: '20px', borderRadius: '28px', border: '1px solid ' + theme.border}}>
         <h3 style={{fontSize: '11px', fontWeight: 'bold', color: theme.sub, marginBottom: '20px', textAlign: 'center'}}>CUMULATIVE GROWTH</h3>
         <div style={{height: '220px'}}>

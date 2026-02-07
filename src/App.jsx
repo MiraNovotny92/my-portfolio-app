@@ -18,6 +18,7 @@ import {
 } from 'recharts';
 
 const CACHE_KEY = "portfolio_data_v4";
+const APP_VERSION = "v.2/7/2026 18:40"; // <--- Change this whenever you deploy!
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#fbbf24', '#ec4899'];
 
 // --- SUB-COMPONENT: ALLOCATION LIST ---
@@ -603,7 +604,10 @@ export default function App() {
               <h1 style={{fontSize: '20px', fontWeight: '900', margin: 0}}>
                 Jamiez <span style={{color: '#10b981'}}>Portfolio</span>
               </h1>
-              {usingCache && !loading && <span style={{fontSize:'10px', color: theme.sub}}>MN</span>}
+              {usingCache && !loading && <span style={{fontSize:'10px', color: theme.sub}}>CACHED</span>}
+      <span style={{fontSize:'10px', background: theme.card, padding:'2px 6px', borderRadius:'4px', border:'1px solid '+theme.border, color: theme.sub}}>
+        {APP_VERSION}
+      </span>
             </div>
           </div>
           <div style={{display: 'flex', gap: '8px'}}>
