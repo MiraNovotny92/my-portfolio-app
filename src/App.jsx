@@ -65,64 +65,69 @@ const AllocationList = ({ title, icon: Icon, data, theme, color }) => {
 
 // --- SUB-COMPONENT: RANKINGS ---
 const Rankings = ({ stocks, theme }) => {
+  // We add state here to toggle visibility
+  const [showGainers, setShowGainers] = useState(true);
+  const [showLosers, setShowLosers] = useState(false);
+
   const top10 = useMemo(() => [...stocks].sort((a, b) => b.profit - a.profit).slice(0, 10), [stocks]);
   const bottom10 = useMemo(() => [...stocks].sort((a, b) => a.profit - b.profit).slice(0, 10), [stocks]);
   
   return (
-    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+    <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px'}}>
+      
+      {/* GAINERS BLOCK */}
       <div style={{background: theme.card, padding: '16px', borderRadius: '24px', border: '1px solid ' + theme.border}}>
-        <p style={{fontSize: '10px', fontWeight: 'bold', color: '#10b981', marginBottom: '12px', textAlign: 'center'}}>🏆 GAINERS</p>
-        {top10.map((s, i) => (
+        <div 
+          onClick={() => setShowGainers(!showGainers)} 
+          style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: showGainers ? '12px' : '0'}}
+        >
+          <p style={{fontSize: '14px', fontWeight: 'bold', color: '#10b981', margin: 0}}>🏆 TOP GAINERS</p>
+          <span style={{fontSize: '18px', color: theme.sub, fontWeight: 'bold'}}>{showGainers ? '−' : '+'}</span>
+        </div>
+        
+        {showGainers && top10.map((s, i) => (
           <div key={i} style={{
-            fontSize: '10px', 
+            fontSize: '12px', 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
-            padding: '8px 0', 
+            padding: '10px 0', 
             borderBottom: '1px solid ' + theme.border
           }}>
-            <span style={{
-              fontWeight: '700', 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap', 
-              flex: 1, 
-              marginRight: '8px', 
-              minWidth: 0
-            }}>
+            <span style={{fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px', minWidth: 0}}>
               {s.name}
             </span>
             <span style={{color: '#10b981', fontWeight: 'bold', whiteSpace: 'nowrap', textAlign: 'right'}}>
-              {(s.profit || 0).toFixed(0)} <span style={{fontSize: '8px', opacity: 0.7}}>({((s.percent || 0)*100).toFixed(1)}%)</span>
+              +{(s.profit || 0).toLocaleString()} <span style={{fontSize: '10px', opacity: 0.7}}>({((s.percent || 0)*100).toFixed(1)}%)</span>
             </span>
           </div>
         ))}
       </div>
 
+      {/* LOSERS BLOCK */}
       <div style={{background: theme.card, padding: '16px', borderRadius: '24px', border: '1px solid ' + theme.border}}>
-        <p style={{fontSize: '10px', fontWeight: 'bold', color: '#ef4444', marginBottom: '12px', textAlign: 'center'}}>📉 LOSERS</p>
-        {bottom10.map((s, i) => (
+        <div 
+          onClick={() => setShowLosers(!showLosers)} 
+          style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: showLosers ? '12px' : '0'}}
+        >
+          <p style={{fontSize: '14px', fontWeight: 'bold', color: '#ef4444', margin: 0}}>📉 TOP LOSERS</p>
+          <span style={{fontSize: '18px', color: theme.sub, fontWeight: 'bold'}}>{showLosers ? '−' : '+'}</span>
+        </div>
+
+        {showLosers && bottom10.map((s, i) => (
           <div key={i} style={{
-            fontSize: '10px', 
+            fontSize: '12px', 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
-            padding: '8px 0', 
+            padding: '10px 0', 
             borderBottom: '1px solid ' + theme.border
           }}>
-            <span style={{
-              fontWeight: '700', 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap', 
-              flex: 1, 
-              marginRight: '8px', 
-              minWidth: 0
-            }}>
+            <span style={{fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px', minWidth: 0}}>
               {s.name}
             </span>
             <span style={{color: '#ef4444', fontWeight: 'bold', whiteSpace: 'nowrap', textAlign: 'right'}}>
-              {(s.profit || 0).toFixed(0)} <span style={{fontSize: '8px', opacity: 0.7}}>({((s.percent || 0)*100).toFixed(1)}%)</span>
+              {(s.profit || 0).toLocaleString()} <span style={{fontSize: '10px', opacity: 0.7}}>({((s.percent || 0)*100).toFixed(1)}%)</span>
             </span>
           </div>
         ))}
@@ -130,6 +135,8 @@ const Rankings = ({ stocks, theme }) => {
     </div>
   );
 };
+
+
 
 // --- SUB-COMPONENT: PIES TAB ---
 const PiesTab = ({ pies, theme }) => {
