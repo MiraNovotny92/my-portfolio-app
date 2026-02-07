@@ -522,16 +522,24 @@ export default function App() {
     return list;
   }, [data, listSortBy, listSortOrder]);
 
-  const ListSortButton = ({ id, label }) => {
+const ListSortButton = ({ id, label }) => {
     const isActive = listSortBy === id;
     return (
       <button 
         onClick={() => handleListSort(id)}
         style={{
-          padding: '6px 12px', fontSize: '9px', fontWeight: 'bold', borderRadius: '10px',
-          border: 'none', background: isActive ? theme.text : theme.card,
-          color: isActive ? theme.bg : theme.sub, border: isActive ? 'none' : '1px solid ' + theme.border,
-          display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', cursor: 'pointer'
+          padding: '6px 12px', 
+          fontSize: '9px', 
+          fontWeight: 'bold', 
+          borderRadius: '10px',
+          background: isActive ? theme.text : theme.card,
+          color: isActive ? theme.bg : theme.sub, 
+          border: isActive ? 'none' : '1px solid ' + theme.border, // This single border definition is enough
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '4px', 
+          whiteSpace: 'nowrap', 
+          cursor: 'pointer'
         }}
       >
         {label}
