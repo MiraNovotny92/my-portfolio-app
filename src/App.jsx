@@ -18,7 +18,7 @@ import {
 } from 'recharts';
 
 const CACHE_KEY = "portfolio_data_v4";
-const APP_VERSION = "v.2/7/2026 18:40"; // <--- Change this whenever you deploy!
+const APP_VERSION = "v.2/7/2026 20:24"; // <--- Change this whenever you deploy!
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#fbbf24', '#ec4899'];
 
 // --- SUB-COMPONENT: ALLOCATION LIST ---
